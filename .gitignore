@@ -1,0 +1,22 @@
+# Credenciales (nunca subir a git)
+credentials.json
+inventario-*.json
+
+# Base de datos local
+*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+
+# Uploads locales
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Herramientas
+cloudflared.exe
+*.log

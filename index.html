@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario Rápido - Captura y OCR</title>
+    <!-- Librería de OCR desde la nube -->
+    <script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 15px; background: #f4f4f9; color: #333; }
+        .container { max-width: 600px; margin: auto; }
+        .card { background: white; padding: 15px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h3 { margin-top: 0; color: #007BFF; }
+        input, button { margin-top: 8px; padding: 8px; width: 100%; font-size: 14px; box-sizing: border-box; }
+        button { background: #007BFF; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .output { background: #eee; padding: 8px; margin-top: 8px; border-radius: 4px; font-family: monospace; font-size: 13px; min-height: 20px; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Registro de Inventario con OCR</h2>
+
+    <!-- BLOQUE CPU -->
+    <div class="card">
+        <h3>CPU / Torre</h3>
+        <label>Foto Etiqueta:</label>
+        <input type="file" id="fotoCPU" accept="image/*" capture="environment">
+        <button onclick="ejecutarOCR('fotoCPU', 'txtCPU')">Analizar OCR CPU</button>
+        <div class="output" id="txtCPU">Esperando imagen...</div>
+    </div>
+
+    <!-- BLOQUE MONITOR -->
+    <div class="card">
+        <h3>Monitor</h3>
+        <label>Foto Etiqueta:</label>
+        <input type="file" id="fotoMonitor" accept="image/*" capture="environment">
+        <button onclick="ejecutarOCR('fotoMonitor', 'txtMonitor')">Analizar OCR Monitor</button>
+        <div class="output" id="txtMonitor">Esperando imagen...</div>
+    </div>
+
+    <!-- BLOQUE TECLADO -->
+    <div class="card">
+        <h3>Teclado</h3>
+        <label>Foto Etiqueta:</label>
+        <input type="file" id="fotoTeclado" accept="image/*" capture="environment">
+        <button onclick="ejecutarOCR('fotoTeclado', 'txtTeclado')">Analizar OCR Teclado</button>
+        <div class="output" id="txtTeclado">Esperando imagen...</div>
+    </div>
+
+    <!-- BLOQUE MOUSE -->
+    <div class="card">
+        <h3>Mouse</h3>
+        <label>Foto Etiqueta:</label>
+        <input type="file" id="fotoMouse" accept="image/*" capture="environment">
+        <button onclick="ejecutarOCR('fotoMouse', 'txtMouse')">Analizar OCR Mouse</button>
+        <div class="output" id="txtMouse">Esperando imagen...</div>
+    </div>
+
+    <!-- BLOQUE IMPRESORA -->
+    <div class="card">
+        <h3>Impresora</h3>
+        <label>Foto Etiqueta:</label>
+        <input type="file" id="fotoImpresora" accept="image/*" capture="environment">
+        <button onclick="ejecutarOCR('fotoImpresora', 'txtImpresora')">Analizar OCR Impresora</button>
+        <div class="output" id="txtImpresora">Esperando imagen...</div>
+    </div>
+
+</div>
+
+<script>
+    function ejecutarOCR(idInput, idSalida) {
+        const inputFiles = document.getElementById(idInput).files;
+        const salida = document.getElementById(idSalida);
+
+        if (inputFiles.length === 0) {
+            alert("Primero toma o selecciona una foto para este dispositivo.");
+            return;
+        }
+
+        const archivo = inputFiles[0];
+        salida.innerText = "Leyendo texto, procesando OCR...";
+
+        Tesseract.recognize(
+            archivo,
+            'eng', // Inglés/Números funciona mejor para códigos de serie
+            { logger: m => console.log(m) }
+        ).then(({ data: { text } }) => {
+            salida.innerText = text.trim() ? text.trim() : "No se detectó texto legible.";
+        }).catch(err => {
+            salida.innerText = "Error en OCR: " + err;
+        });
+    }
+</script>
+
+</body>
+</html>

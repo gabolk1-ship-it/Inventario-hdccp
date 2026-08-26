@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventario Rápido</title>
+  <script src="https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; color: #1a1a2e; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: white; padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 200;
+      box-shadow: 0 2px 12px rgba(0,0,0,.3);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; }
+    .brand span { font-size: 26px; }
+    .nav-tabs { display: flex; gap: 6px; }
+    .nav-tabs button {
+      background: rgba(255,255,255,.12); border: none; color: white;
+      padding: 7px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: background .2s;
+    }
+    .nav-tabs button.active,
+    .nav-tabs button:hover { background: rgba(255,255,255,.28); }
+
+    /* ── Pages ── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Device cards ── */
+    .device-grid {
+      display: grid; grid-template-columns: repeat(5,1fr);
+      gap: 12px; padding: 24px 32px 0; max-width: 1100px; margin: 0 auto;
+    }
+    .device-card {
+      border-radius: 16px; padding: 20px 8px; text-align: center;
+      cursor: pointer; color: white; font-weight: 700; font-size: 13px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.15);
+      transition: transform .18s, box-shadow .18s; user-select: none;
+    }
+    .device-card:hover  { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+    .device-card.active { transform: translateY(-2px); outline: 4px solid white; outline-offset: 2px; }
+    .device-card .icon  { font-size: 36px; display: block; margin-bottom: 8px; }
+    .card-cpu       { background: linear-gradient(135deg,#1a73e8,#0d47a1); }
+    .card-monitor   { background: linear-gradient(135deg,#34a853,#1b5e20); }
+    .card-teclado   { background: linear-gradient(135deg,#f9a825,#e65100); }
+    .card-mouse     { background: linear-gradient(135deg,#9c27b0,#4a148c); }
+    .card-impresora { background: linear-gradient(135deg,#ea4335,#b71c1c); }
+
+    /* ── Form panel ── */
+    .form-panel { max-width: 1100px; margin: 20px auto 40px; padding: 0 32px; display: none; }
+    .form-panel.visible { display: block; }
+    .panel-inner { background: white; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,0,0,.1); overflow: hidden; }
+    .panel-banner { padding: 16px 24px; color: white; display: flex; align-items: center; gap: 12px; font-size: 19px; font-weight: 700; }
+    .panel-banner .icon { font-size: 28px; }
+    .panel-body { padding: 24px; }
+
+    /* ── Section labels ── */
+    .section-label {
+      font-size: 11px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 1px; color: #888; margin: 20px 0 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .section-label::after { content:''; flex:1; height:1px; background:#e0e0e0; }
+
+    /* ── Foto zones ── */
+    .foto-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .foto-zone {
+      border: 2px dashed #c5cae9; border-radius: 16px; padding: 14px;
+      text-align: center; cursor: pointer; position: relative;
+      transition: border-color .2s, background .2s;
+    }
+    .foto-zone:hover { border-color: #1a73e8; background: #f0f4ff; }
+    .foto-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .foto-zone .fz-icon  { font-size: 36px; margin-bottom: 6px; }
+    .foto-zone .fz-label { font-size: 13px; font-weight: 700; color: #333; }
+    .foto-zone .fz-hint  { font-size: 11px; color: #888; margin-top: 3px; }
+    .foto-zone img.fz-preview { width:100%; height:140px; object-fit:cover; border-radius:10px; display:none; margin-bottom:8px; }
+    .foto-zone.has-foto { border-style: solid; border-color: #34a853; }
+    .ocr-badge { display:inline-block; background:#1a73e8; color:white; font-size:10px; font-weight:800; padding:2px 7px; border-radius:10px; margin-left:5px; }
+
+    /* ── OCR box ── */
+    .ocr-box { background:#f8f9ff; border:1px solid #c5cae9; border-radius:12px; padding:12px 14px; margin-bottom: 4px; }
+    .ocr-box-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+    .ocr-box-title { font-weight:700; font-size:12px; color:#555; }
+    .ocr-rerun { background:none; border:1px solid #1a73e8; color:#1a73e8; border-radius:8px; padding:3px 10px; font-size:11px; cursor:pointer; font-weight:600; }
+    .ocr-rerun:hover { background:#1a73e8; color:white; }
+    .ocr-text { font-family:monospace; font-size:11px; color:#333; white-space:pre-wrap; word-break:break-all; max-height:70px; overflow-y:auto; }
+    .ocr-progress { height:3px; background:#e0e0e0; border-radius:2px; margin-top:6px; overflow:hidden; }
+    .ocr-progress-fill { height:100%; width:0%; background:#1a73e8; border-radius:2px; transition:width .3s; }
+    .ocr-status-text { font-size:10px; color:#888; margin-top:3px; }
+
+    /* ── Grid de campos ── */
+    .fields-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+    .fields-grid.cols2 { grid-template-columns: repeat(2,1fr); }
+    .full { grid-column: 1/-1; }
+
+    .field-group { display:flex; flex-direction:column; gap:4px; }
+    .field-group label { font-size:11px; font-weight:700; color:#555; text-transform:uppercase; letter-spacing:.4px; }
+    .field-group input, .field-group select {
+      padding: 9px 11px; border: 1.5px solid #e0e0e0;
+      border-radius: 10px; font-size: 13px; transition: border-color .2s, box-shadow .2s;
+    }
+    .field-group input:focus, .field-group select:focus {
+      outline:none; border-color:#1a73e8; box-shadow:0 0 0 3px rgba(26,115,232,.12);
+    }
+    .field-group input.autofilled { background:#fffde7; border-color:#f9a825; }
+
+    /* ── Estado pills ── */
+    .estado-pills { display:flex; gap:8px; }
+    .estado-pill {
+      flex:1; padding:9px 4px; text-align:center;
+      border:2px solid #e0e0e0; border-radius:10px;
+      font-size:13px; font-weight:700; cursor:pointer; transition:all .2s;
+    }
+    .sel-bueno   { background:#e8f5e9; border-color:#34a853; color:#1b5e20; }
+    .sel-regular { background:#fff8e1; border-color:#f9a825; color:#e65100; }
+    .sel-malo    { background:#fce4ec; border-color:#ea4335; color:#b71c1c; }
+
+    /* ── Guardar ── */
+    .btn-save {
+      width:100%; padding:15px; margin-top:20px;
+      background: linear-gradient(135deg,#34a853,#1b5e20);
+      color:white; border:none; border-radius:12px;
+      font-size:16px; font-weight:700; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      box-shadow:0 4px 14px rgba(52,168,83,.35); transition:filter .2s, transform .15s;
+    }
+    .btn-save:hover  { filter:brightness(108%); transform:translateY(-1px); }
+    .btn-save:active { transform:translateY(0); }
+
+    /* ── Toast ── */
+    .toast {
+      position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+      padding:11px 28px; border-radius:24px; font-size:14px; font-weight:600;
+      z-index:999; opacity:0; transition:opacity .3s; pointer-events:none;
+      box-shadow:0 4px 20px rgba(0,0,0,.22);
+    }
+    .toast.show { opacity:1; }
+    .toast.ok  { background:#34a853; color:white; }
+    .toast.err { background:#ea4335; color:white; }
+
+    /* ── Inventario ── */
+    .inv-page { max-width:1200px; margin:0 auto; padding:24px 32px; }
+    .inv-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .inv-header h2 { font-size:21px; }
+    .btn-refresh { background:#1a73e8; color:white; border:none; padding:9px 18px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; }
+    .btn-refresh:hover { filter:brightness(90%); }
+    .table-card { background:white; border-radius:16px; box-shadow:0 2px 14px rgba(0,0,0,.08); overflow:hidden; }
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:12px; }
+    thead th { background:#1a1a2e; color:white; padding:11px 9px; text-align:left; white-space:nowrap; }
+    tbody td { padding:9px; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
+    tbody tr:last-child td { border-bottom:none; }
+    tbody tr:hover td { background:#f8f9ff; }
+    .thumb { width:42px; height:42px; object-fit:cover; border-radius:7px; }
+    .badge { display:inline-block; padding:3px 9px; border-radius:12px; font-size:10px; font-weight:800; }
+    .badge-si  { background:#e8f5e9; color:#1b5e20; }
+    .badge-no  { background:#fce4ec; color:#b71c1c; }
+    .type-chip { display:inline-block; padding:3px 9px; border-radius:12px; font-size:10px; font-weight:800; color:white; }
+    .tc-cpu         { background:#1a73e8; }
+    .tc-monitor     { background:#34a853; }
+    .tc-teclado     { background:#f9a825; color:#333; }
+    .tc-mouse       { background:#9c27b0; }
+    .tc-impresora   { background:#ea4335; }
+    .tc-escritorio  { background:#00897b; }
+    .tc-portatil    { background:#5c6bc0; }
+    .tc-todoenuno   { background:#ff7043; }
+    .btn-del { background:#fce4ec; color:#c62828; border:none; padding:5px 9px; border-radius:8px; cursor:pointer; font-size:14px; transition:background .2s; }
+    .btn-del:hover { background:#ea4335; color:white; }
+
+    /* ── Responsive ── */
+    @media(max-width:720px){
+      .device-grid { grid-template-columns:repeat(3,1fr); gap:8px; padding:14px 14px 0; }
+      .foto-row { grid-template-columns:1fr; }
+      .fields-grid { grid-template-columns:1fr 1fr; }
+      .form-panel,.inv-page { padding:0 12px; }
+      .inv-page { padding:14px 12px; }
+    }
+    @media(max-width:440px){
+      .device-grid { grid-template-columns:repeat(2,1fr); }
+      .fields-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span>📦</span> Inventario IESS</div>
+  <div class="nav-tabs">
+    <button class="active" onclick="showPage('reg',this)">➕ Registrar</button>
+    <button onclick="showPage('inv',this)">📋 Ver Inventario</button>
+  </div>
+</header>
+
+<!-- ════════════ REGISTRO ════════════ -->
+<div id="page-reg" class="page active">
+
+  <div class="device-grid">
+    <div class="device-card card-cpu"       onclick="selectDevice(this,'CPU','💻','linear-gradient(135deg,#1a73e8,#0d47a1)')"><span class="icon">💻</span>CPU / Torre</div>
+    <div class="device-card card-monitor"   onclick="selectDevice(this,'MONITOR','🖥️','linear-gradient(135deg,#34a853,#1b5e20)')"><span class="icon">🖥️</span>Monitor</div>
+    <div class="device-card card-teclado"   onclick="selectDevice(this,'TECLADO','⌨️','linear-gradient(135deg,#f9a825,#e65100)')"><span class="icon">⌨️</span>Teclado</div>
+    <div class="device-card card-mouse"     onclick="selectDevice(this,'MOUSE','🖱️','linear-gradient(135deg,#9c27b0,#4a148c)')"><span class="icon">🖱️</span>Mouse</div>
+    <div class="device-card card-impresora" onclick="selectDevice(this,'IMPRESORA','🖨️','linear-gradient(135deg,#ea4335,#b71c1c)')"><span class="icon">🖨️</span>Impresora</div>
+  </div>
+
+  <div class="form-panel" id="form-panel">
+    <div class="panel-inner">
+      <div class="panel-banner" id="panel-banner">
+        <span class="icon" id="banner-icon">💻</span>
+        <span id="banner-title">Selecciona un equipo</span>
+      </div>
+      <div class="panel-body">
+
+        <!-- ── FOTOS ── -->
+        <div class="section-label">📷 Fotos del equipo</div>
+        <div class="foto-row">
+          <div class="foto-zone" id="zone-equipo">
+            <input type="file" id="foto-equipo" accept="image/*" capture="environment"
+                   onchange="previewFoto(this,'prev-equipo','zone-equipo','fz-icon-equipo')">
+            <img class="fz-preview" id="prev-equipo" alt="Equipo">
+            <div class="fz-icon" id="fz-icon-equipo">📷</div>
+            <div class="fz-label">Foto del Equipo</div>
+            <div class="fz-hint">Toca para abrir la cámara</div>
+          </div>
+          <div class="foto-zone" id="zone-etiqueta">
+            <input type="file" id="foto-etiqueta" accept="image/*" capture="environment"
+                   onchange="previewFoto(this,'prev-etiqueta','zone-etiqueta','fz-icon-etiqueta'); ejecutarOCR()">
+            <img class="fz-preview" id="prev-etiqueta" alt="Etiqueta">
+            <div class="fz-icon" id="fz-icon-etiqueta">🏷️</div>
+            <div class="fz-label">Etiqueta <span class="ocr-badge">OCR AUTO</span></div>
+            <div class="fz-hint">El texto se leerá automáticamente</div>
+          </div>
+        </div>
+
+        <!-- ── OCR ── -->
+        <div class="ocr-box" style="margin-top:14px">
+          <div class="ocr-box-header">
+            <span class="ocr-box-title">🔍 Texto detectado por OCR</span>
+            <button class="ocr-rerun" onclick="ejecutarOCR()">🔄 Re-analizar</button>
+          </div>
+          <div class="ocr-text" id="ocr-text">Toma la foto de la etiqueta para detectar texto automáticamente...</div>
+          <div class="ocr-progress"><div class="ocr-progress-fill" id="ocr-fill"></div></div>
+          <div class="ocr-status-text" id="ocr-status"></div>
+        </div>
+
+        <!-- ── IDENTIFICACIÓN ── -->
+        <div class="section-label">🏷️ Identificación del bien</div>
+        <div class="fields-grid">
+          <div class="field-group">
+            <label>Código del Bien IESS</label>
+            <input type="text" id="f-codigo_bien" placeholder="Ej: IM-0511 C.C.Q.A.H.D.">
+          </div>
+          <div class="field-group">
+            <label>Código Auxiliar</label>
+            <input type="text" id="f-codigo_auxiliar" placeholder="Ej: 27038980000661">
+          </div>
+          <div class="field-group">
+            <label>Tipo de Bien</label>
+            <input type="text" id="f-tipo_display" readonly style="background:#f5f5f5;color:#666">
+          </div>
+        </div>
+
+        <!-- ── ESPECIFICACIONES ── -->
+        <div class="section-label">⚙️ Especificaciones técnicas</div>
+        <div class="fields-grid">
+          <div class="field-group">
+            <label>Marca</label>
+            <input type="text" id="f-marca" placeholder="Ej: Dell, HP, Lenovo…">
+          </div>
+          <div class="field-group">
+            <label>Modelo</label>
+            <input type="text" id="f-modelo" placeholder="Ej: OptiPlex 3050">
+          </div>
+          <div class="field-group">
+            <label>Número de Serie (S/N)</label>
+            <input type="text" id="f-serie" placeholder="Detectado por OCR…">
+          </div>
+          <div class="field-group">
+            <label>Sistema Operativo</label>
+            <input type="text" id="f-sistema_operativo" placeholder="Ej: Windows 11 Pro">
+          </div>
+          <div class="field-group">
+            <label>Memoria RAM</label>
+            <input type="text" id="f-ram" placeholder="Ej: 16 GB">
+          </div>
+          <div class="field-group full">
+            <label>Procesador</label>
+            <input type="text" id="f-procesador" placeholder="Ej: Intel Core i7-6700">
+          </div>
+        </div>
+
+        <!-- ── UBICACIÓN ── -->
+        <div class="section-label">📍 Ubicación</div>
+        <div class="fields-grid">
+          <div class="field-group">
+            <label>Dependencia / Edificio</label>
+            <input type="text" id="f-dependencia" placeholder="Ej: C.C.Q.A.HD. COTOCOLLAO">
+          </div>
+          <div class="field-group">
+            <label>Área Funcional</label>
+            <input type="text" id="f-ubicacion" placeholder="Ej: Rehabilitación">
+          </div>
+          <div class="field-group">
+            <label>Ciudad</label>
+            <input type="text" id="f-ciudad" value="QUITO">
+          </div>
+        </div>
+
+        <!-- ── CUSTODIO ── -->
+        <div class="section-label">👤 Custodio</div>
+        <div class="fields-grid cols2">
+          <div class="field-group">
+            <label>Cédula Custodio</label>
+            <input type="text" id="f-cedula_custodio" placeholder="Ej: 1713473534">
+          </div>
+          <div class="field-group">
+            <label>Nombre del Custodio</label>
+            <input type="text" id="f-responsable" placeholder="Apellidos y nombres">
+          </div>
+        </div>
+
+        <!-- ── RED ── -->
+        <div class="section-label">🌐 Red (opcional)</div>
+        <div class="fields-grid">
+          <div class="field-group">
+            <label>Dirección IP</label>
+            <input type="text" id="f-ip" placeholder="Ej: 172.16.86.13">
+          </div>
+          <div class="field-group">
+            <label>MAC Address</label>
+            <input type="text" id="f-mac" placeholder="Ej: DC:4A:3E:58:52:9F">
+          </div>
+          <div class="field-group">
+            <label>Hostname</label>
+            <input type="text" id="f-hostname" placeholder="Ej: PCUIOCOT085L">
+          </div>
+        </div>
+
+        <!-- ── ESTADO ── -->
+        <div class="section-label">✅ Estado del equipo</div>
+        <div class="estado-pills">
+          <div class="estado-pill sel-bueno"  onclick="selectEstado('Bueno',this)">✅ Bueno</div>
+          <div class="estado-pill"            onclick="selectEstado('Regular',this)">⚠️ Regular</div>
+          <div class="estado-pill"            onclick="selectEstado('Malo',this)">❌ Malo</div>
+        </div>
+        <input type="hidden" id="f-estado" value="Bueno">
+
+        <!-- ── GUARDAR ── -->
+        <button class="btn-save" onclick="guardarRegistro()">
+          💾 Guardar en Sheet y Base de Datos
+        </button>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ INVENTARIO ════════════ -->
+<div id="page-inv" class="page">
+  <div class="inv-page">
+    <div class="inv-header">
+      <h2>📋 Inventario en Google Sheets</h2>
+      <button class="btn-refresh" onclick="cargarInventario()">🔄 Actualizar</button>
+    </div>
+    <div class="table-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Tipo</th><th>Código Bien</th><th>Marca</th><th>Modelo</th>
+              <th>Serie</th><th>S.O.</th><th>RAM</th>
+              <th>Área</th><th>Custodio</th><th>Operativo</th><th>IP</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = window.location.origin;
+let deviceActivo = '';
+
+/* ── Páginas ── */
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-tabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (name === 'inv') cargarInventario();
+}
+
+/* ── Selección de dispositivo ── */
+function selectDevice(card, tipo, icon, gradient) {
+  document.querySelectorAll('.device-card').forEach(c => c.classList.remove('active'));
+  card.classList.add('active');
+  deviceActivo = tipo;
+  document.getElementById('panel-banner').style.background = gradient;
+  document.getElementById('banner-icon').textContent  = icon;
+  document.getElementById('banner-title').textContent = tipo;
+  document.getElementById('f-tipo_display').value = tipo;
+  const panel = document.getElementById('form-panel');
+  panel.classList.add('visible');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ── Preview fotos ── */
+function previewFoto(input, prevId, zoneId, iconId) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById(prevId).src = e.target.result;
+    document.getElementById(prevId).style.display = 'block';
+    document.getElementById(iconId).style.display = 'none';
+    document.getElementById(zoneId).classList.add('has-foto');
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ── OCR ── */
+function ejecutarOCR() {
+  const input = document.getElementById('foto-etiqueta');
+  if (!input.files.length) return;
+  const ocrText = document.getElementById('ocr-text');
+  const fill    = document.getElementById('ocr-fill');
+  const status  = document.getElementById('ocr-status');
+  ocrText.textContent = 'Leyendo etiqueta…'; fill.style.width = '0%';
+
+  Tesseract.recognize(input.files[0], 'eng', {
+    logger: m => {
+      if (m.status === 'recognizing text') {
+        const p = Math.round((m.progress||0)*100);
+        fill.style.width = p+'%';
+        status.textContent = `Procesando: ${p}%`;
+      }
+    }
+  }).then(({data:{text}}) => {
+    const t = text.trim();
+    ocrText.textContent = t || 'No se detectó texto.';
+    fill.style.width = '100%';
+    status.textContent = t ? '✅ Auto-completando campos…' : '⚠️ Sin texto detectado';
+    if (t) rellenarCampos(t);
+  }).catch(e => { ocrText.textContent = 'Error: '+e; });
+}
+
+/* ── Parser inteligente ── */
+function rellenarCampos(txt) {
+  // S/N
+  for (const p of [
+    /(?:S\/N|SN|Serial\s*(?:No?)?|Serie)\s*[:\-]?\s*([A-Z0-9\-]{5,})/i,
+    /\b([A-Z]{2,4}[0-9]{4,}[A-Z0-9]*)\b/,
+    /\b([0-9]{4,}[A-Z]{2,}[A-Z0-9]*)\b/
+  ]) { const m=txt.match(p); if(m){ autoFill('f-serie',m[1]); break; } }
+
+  // Marca
+  for (const m of ['Dell','HP','Hewlett','Lenovo','Acer','Asus','Samsung','LG',
+    'Toshiba','Sony','Apple','MSI','Huawei','Epson','Canon','Brother',
+    'Xerox','Logitech','Microsoft','Panasonic']) {
+    if (new RegExp(m,'i').test(txt)) { autoFill('f-marca',m); break; }
+  }
+  // Modelo
+  for (const l of txt.split('\n').map(l=>l.trim())) {
+    if (l.length>2 && l.length<30 && /[A-Z][0-9]|[0-9][A-Z]/i.test(l) &&
+        !/S\/N|Serial|Service|Tag|Date|Mfg|FCC|UL|CE/i.test(l)) {
+      autoFill('f-modelo',l); break;
+    }
+  }
+  // RAM
+  const rm = txt.match(/(\d+)\s*GB\s*(?:RAM|DDR)/i);
+  if (rm) autoFill('f-ram', rm[1]+' GB');
+  // S.O.
+  const so = txt.match(/Windows\s+\d+[\w\s]*/i);
+  if (so) autoFill('f-sistema_operativo', so[0].trim());
+  // Hostname / hostname patterns
+  const hn = txt.match(/PCUIO[A-Z0-9]+/i);
+  if (hn) autoFill('f-hostname', hn[0]);
+  // MAC
+  const mac = txt.match(/([0-9A-F]{2}[:\-]){5}[0-9A-F]{2}/i);
+  if (mac) autoFill('f-mac', mac[0]);
+  // IP
+  const ip = txt.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
+  if (ip) autoFill('f-ip', ip[0]);
+}
+
+function autoFill(id, val) {
+  const el = document.getElementById(id);
+  if (el && !el.value.trim()) { el.value = val; el.classList.add('autofilled'); }
+}
+
+/* ── Estado pills ── */
+function selectEstado(estado, pill) {
+  document.querySelectorAll('.estado-pill').forEach(p => p.className='estado-pill');
+  pill.classList.add({Bueno:'sel-bueno',Regular:'sel-regular',Malo:'sel-malo'}[estado]);
+  document.getElementById('f-estado').value = estado;
+}
+
+/* ── Guardar ── */
+async function guardarRegistro() {
+  if (!deviceActivo) { toast('Selecciona primero el tipo de equipo','err'); return; }
+
+  const fd = new FormData();
+  const ids = ['marca','modelo','serie','sistema_operativo','ram','procesador',
+               'dependencia','ubicacion','cedula_custodio','responsable',
+               'ip','mac','hostname','codigo_bien','codigo_auxiliar'];
+  fd.append('tipo', deviceActivo);
+  fd.append('estado', document.getElementById('f-estado').value);
+  fd.append('ocr_raw', document.getElementById('ocr-text').textContent);
+  ids.forEach(id => fd.append(id, document.getElementById('f-'+id)?.value || ''));
+
+  const fe = document.getElementById('foto-etiqueta').files[0];
+  const fq = document.getElementById('foto-equipo').files[0];
+  if (fe) fd.append('foto_etiqueta', fe);
+  if (fq) fd.append('foto_equipo',   fq);
+
+  try {
+    const res  = await fetch(`${API}/api/inventario`, {method:'POST', body:fd});
+    const json = await res.json();
+    if (res.ok) {
+      toast(json.message || '✅ Guardado correctamente', 'ok');
+      limpiar();
+    } else {
+      toast('❌ Error: '+(json.detail||'desconocido'), 'err');
+    }
+  } catch { toast('❌ Sin conexión con el servidor','err'); }
+}
+
+function limpiar() {
+  ['marca','modelo','serie','sistema_operativo','ram','procesador',
+   'dependencia','ubicacion','cedula_custodio','responsable',
+   'ip','mac','hostname','codigo_bien','codigo_auxiliar'].forEach(id => {
+    const el = document.getElementById('f-'+id);
+    if (el) { el.value=''; el.classList.remove('autofilled'); }
+  });
+  document.getElementById('f-estado').value = 'Bueno';
+  document.getElementById('ocr-text').textContent = 'Toma la foto de la etiqueta para detectar texto automáticamente...';
+  document.getElementById('ocr-fill').style.width = '0%';
+  document.getElementById('ocr-status').textContent = '';
+  ['foto-etiqueta','foto-equipo'].forEach(id => document.getElementById(id).value='');
+  ['prev-etiqueta','prev-equipo'].forEach(id => { document.getElementById(id).style.display='none'; });
+  ['fz-icon-equipo','fz-icon-etiqueta'].forEach(id => document.getElementById(id).style.display='');
+  ['zone-equipo','zone-etiqueta'].forEach(id => document.getElementById(id).classList.remove('has-foto'));
+  document.querySelectorAll('.estado-pill').forEach(p => p.className='estado-pill');
+  document.querySelector('.estado-pill').classList.add('sel-bueno');
+}
+
+/* ── Inventario (desde Sheets) ── */
+async function cargarInventario() {
+  const tb = document.getElementById('tbody');
+  tb.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:28px;color:#aaa">Cargando desde Google Sheets...</td></tr>';
+  try {
+    const data = await (await fetch(`${API}/api/inventario`)).json();
+    if (!data.length) {
+      tb.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:28px;color:#aaa">Sin registros</td></tr>';
+      return;
+    }
+    const tcMap = t => {
+      const tl = (t||'').toLowerCase();
+      if (tl.includes('cpu') || tl.includes('escritorio')) return 'tc-cpu';
+      if (tl.includes('monitor')) return 'tc-monitor';
+      if (tl.includes('teclado')) return 'tc-teclado';
+      if (tl.includes('mouse'))   return 'tc-mouse';
+      if (tl.includes('impresora')) return 'tc-impresora';
+      if (tl.includes('portatil') || tl.includes('portátil')) return 'tc-portatil';
+      if (tl.includes('uno'))    return 'tc-todoenuno';
+      return 'tc-cpu';
+    };
+    // Foto dinámica según tipo
+    const getFoto = r => {
+      const t = (r.tipo||'').toLowerCase();
+      if (t.includes('cpu') || t.includes('escritorio') || t.includes('uno') || t.includes('portatil'))
+        return r.foto_cpu;
+      if (t.includes('monitor'))   return r.foto_monitor;
+      if (t.includes('teclado'))   return r.foto_teclado;
+      if (t.includes('mouse'))     return r.foto_mouse;
+      if (t.includes('impresora')) return r.foto_impresora;
+      return '';
+    };
+    tb.innerHTML = data.map((r,i) => {
+      const foto = getFoto(r);
+      const op   = (r.operativo||'').toUpperCase() === 'SI';
+      return `<tr>
+        <td>${i+1}</td>
+        <td><span class="type-chip ${tcMap(r.tipo)}">${r.tipo}</span></td>
+        <td style="font-size:11px">${r.codigo_bien||'—'}</td>
+        <td><strong>${r.marca||'—'}</strong></td>
+        <td>${r.modelo||'—'}</td>
+        <td style="font-family:monospace;font-size:11px">${r.serie||'—'}</td>
+        <td style="font-size:11px">${r.sistema_op||'—'}</td>
+        <td style="font-size:11px">${r.ram||'—'}</td>
+        <td style="font-size:11px">${r.dependencia||r.ubicacion||'—'}</td>
+        <td style="font-size:11px">${r.responsable||'—'}</td>
+        <td><span class="badge ${op?'badge-si':'badge-no'}">${op?'✅ SI':'❌ NO'}</span></td>
+        <td style="font-family:monospace;font-size:11px">${r.ip||'—'}</td>
+        <td>${foto ? `<img class="thumb" src="${foto}">` : '—'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tb.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:20px;color:#e53">Error: ${e.message}</td></tr>`;
+  }
+}
+
+/* ── Toast ── */
+function toast(msg, tipo='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `toast show ${tipo}`;
+  setTimeout(() => el.className='toast', 3500);
+}
+</script>
+</body>
+</html>
