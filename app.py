@@ -283,32 +283,21 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
                 c_eq, c_et, c_ocr = FOTO_COLS[prefix]
                 if data.get("foto_equipo"):   sc(c_eq, data["foto_equipo"])
                 if data.get("foto_etiqueta"): sc(c_et, data["foto_etiqueta"])
-                ocr_cpu = data.get("ocr_raw")
-                if not ocr_cpu:
-                    partes_cpu = []
-                    if data.get("codigo_bien"):     partes_cpu.append(f"Bien: {data['codigo_bien']}")
-                    if data.get("codigo_auxiliar"): partes_cpu.append(f"Aux: {data['codigo_auxiliar']}")
-                    if data.get("serie"):           partes_cpu.append(f"S/N: {data['serie']}")
-                    ocr_cpu = " | ".join(partes_cpu)
-                if ocr_cpu: sc(c_ocr, ocr_cpu)
+                if data.get("ocr_raw"):       sc(c_ocr, data["ocr_raw"])
         else:
-            # Es un periférico (Monitor, Teclado, Mouse, Impresora) asociado al computador
-            partes_peri = []
-            if data.get("codigo_bien"):     partes_peri.append(f"Bien: {data['codigo_bien']}")
-            if data.get("codigo_auxiliar"): partes_peri.append(f"Aux: {data['codigo_auxiliar']}")
-            if data.get("serie"):           partes_peri.append(f"S/N: {data['serie']}")
-            if data.get("marca"):           partes_peri.append(f"Marca: {data['marca']}")
-            if data.get("modelo"):          partes_peri.append(f"Modelo: {data['modelo']}")
-            if data.get("estado"):          partes_peri.append(f"Estado: {data['estado']}")
-            if data.get("ocr_raw"):         partes_peri.append(f"OCR: {data['ocr_raw']}")
-            resumen_peri = " | ".join(partes_peri)
+            # Periférico: Si actualiza un registro dedicado o asociado, guardar en sus campos
+            if data.get("codigo_bien"):       sc("Código del bien IESS", data["codigo_bien"])
+            if data.get("codigo_auxiliar"):   sc("Código Auxiliar (Unnamed: 1)", data["codigo_auxiliar"])
+            if data.get("marca"):             sc("Marca del equipo", data["marca"])
+            if data.get("modelo"):            sc("Modelo del equipo", data["modelo"])
+            if data.get("serie"):             sc("Serie del equipo", data["serie"])
 
             prefix = tipo_prefix(tipo_str)
             if prefix in FOTO_COLS:
                 c_eq, c_et, c_ocr = FOTO_COLS[prefix]
                 if data.get("foto_equipo"):   sc(c_eq, data["foto_equipo"])
                 if data.get("foto_etiqueta"): sc(c_et, data["foto_etiqueta"])
-                if resumen_peri:              sc(c_ocr, resumen_peri)
+                if data.get("ocr_raw"):       sc(c_ocr, data["ocr_raw"])
 
         col_end = gspread.utils.rowcol_to_a1(1, len(fila)).rstrip("0123456789")
         ws.update([fila], f"A{fila_num}:{col_end}{fila_num}", value_input_option="USER_ENTERED")
