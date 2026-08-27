@@ -382,6 +382,26 @@ def download_bat():
     )
 
 
+@app.get("/iess-blue.jpeg", include_in_schema=False)
+@app.get("/images/iess-blue.jpeg", include_in_schema=False)
+def get_iess_blue():
+    for p in [
+        os.path.join(os.path.dirname(__file__), "images", "iess-blue.jpeg"),
+        os.path.join(static_dir, "iess-blue.jpeg")
+    ]:
+        if os.path.exists(p):
+            return FileResponse(p, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+    raise HTTPException(status_code=404, detail="Imagen no encontrada")
+
+
+@app.get("/logo_iess.jpg", include_in_schema=False)
+def get_logo():
+    logo_path = os.path.join(static_dir, "logo_iess.jpg")
+    if os.path.exists(logo_path):
+        return FileResponse(logo_path, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+    raise HTTPException(status_code=404, detail="Logo no encontrado")
+
+
 @app.post("/api/inventario")
 async def crear_registro(
     tipo:              str  = Form(...),

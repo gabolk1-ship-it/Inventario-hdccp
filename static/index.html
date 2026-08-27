@@ -3,18 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inventario IESS</title>
+  <title>IESS COTOCOLLAO - Inventario Tecnológico</title>
   <script src="https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;background:#eef2f7;color:#1a1a2e;min-height:100vh}
 
     /* ── Header ── */
-    header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:white;padding:14px 20px;
+    header{background:linear-gradient(135deg,#000d44,#001460);color:white;padding:10px 18px;
       display:flex;align-items:center;justify-content:space-between;
-      position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.3)}
-    .brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700}
-    .brand span{font-size:24px}
+      position:sticky;top:0;z-index:200;box-shadow:0 2px 14px rgba(0,0,0,.4)}
+    .brand{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
+    .banner-iess{height:46px;max-width:100%;object-fit:contain;border-radius:6px;display:block}
+    .badge-v{background:#34a853;color:white;font-size:10px;padding:2px 7px;border-radius:12px;font-weight:700;margin-left:4px;align-self:flex-start}
     .nav-tabs{display:flex;gap:6px;flex-wrap:wrap}
     .nav-tabs button{background:rgba(255,255,255,.15);border:none;color:white;
       padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;
@@ -179,9 +180,9 @@
       .page{padding:12px}
 
       /* Header */
-      header{padding:10px 14px;flex-wrap:wrap;gap:8px}
-      .brand{font-size:16px}
-      .brand span{font-size:22px}
+      header{padding:8px 12px;flex-wrap:wrap;gap:8px}
+      .brand{width:100%;justify-content:center}
+      .banner-iess{height:36px;max-width:280px}
       .nav-tabs{width:100%;justify-content:center}
       .nav-tabs button{flex:1;font-size:13px;padding:9px 6px;border-radius:14px}
       #sheet-count{display:none}
@@ -275,7 +276,10 @@
 <body>
 
 <header>
-  <div class="brand"><span>📦</span>Inventario IESS <span style="background:#34a853;color:white;font-size:10px;padding:2px 7px;border-radius:12px;margin-left:4px;font-weight:700">v3.7</span></div>
+  <div class="brand">
+    <img src="/iess-blue.jpeg" alt="IESS Hospital del Día Cotocollao" class="banner-iess">
+    <span class="badge-v">v3.8</span>
+  </div>
   <div class="nav-tabs">
     <button class="active" onclick="showPage('reg',this)">📝 Registrar</button>
     <button onclick="showPage('inv',this)">📋 Inventario</button>
@@ -461,7 +465,6 @@
         <div class="ocr-hdr">
           <span class="ocr-title" id="c1-ocr-title">🤖 Agente IA de Visión / OCR</span>
           <div style="display:flex;gap:6px">
-            <button class="ocr-btn" onclick="abrirModalIA()" title="Configurar clave Gemini">⚙️ Clave IA</button>
             <button class="ocr-btn" onclick="runOCR('c1','bien')">🔄 Re-analizar</button>
           </div>
         </div>
@@ -592,7 +595,6 @@
         <div class="ocr-hdr">
           <span class="ocr-title" id="p-ocr-title">🤖 Agente IA de Visión / OCR</span>
           <div style="display:flex;gap:6px">
-            <button class="ocr-btn" onclick="abrirModalIA()" title="Configurar clave Gemini">⚙️ Clave IA</button>
             <button class="ocr-btn" onclick="runOCR('p','bien')">🔄 Re-analizar</button>
           </div>
         </div>
@@ -1090,7 +1092,7 @@ async function runOCR(pfx, modo = 'bien') {
     }
   }).then(({data:{text}}) => {
     const t = text.trim();
-    txt.textContent = t ? `📄 Texto OCR detectado:\n${t}\n\n💡 Tip: Usa el botón "⚙️ Clave IA" para activar el Agente Gemini con lectura 100% exacta.` : '⚠️ Sin texto detectado en la imagen.';
+    txt.textContent = t ? `📄 Texto OCR detectado:\n${t}` : '⚠️ Sin texto detectado en la imagen.';
     fill.style.width = '100%';
     st.textContent   = t ? '✅ OCR completado' : '⚠️ Sin texto';
     if (t) parseOCR(pfx, t);
