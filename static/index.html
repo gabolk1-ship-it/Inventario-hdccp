@@ -626,20 +626,28 @@ let modActivo = '';
 /* ══ Páginas ══ */
 function showPage(name, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
+  const targetPage = document.getElementById('page-' + name);
+  if (targetPage) targetPage.classList.add('active');
   document.querySelectorAll('.nav-tabs button').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
+  window.scrollTo({top: 0, behavior: 'smooth'});
   if (name === 'inv') loadInv();
 }
 
 /* ══ Módulo selector ══ */
 function selectMod(mod, card) {
   document.querySelectorAll('.module-card').forEach(c => c.classList.remove('active'));
-  card.classList.add('active');
+  if (card) card.classList.add('active');
   modActivo = mod;
-  document.getElementById('mod-completo').style.display  = mod === 'completo'   ? '' : 'none';
-  document.getElementById('mod-periferico').style.display = mod === 'periferico' ? '' : 'none';
-  card.scrollIntoView({behavior:'smooth', block:'end'});
+  const modComp = document.getElementById('mod-completo');
+  const modPeri = document.getElementById('mod-periferico');
+  if (modComp) modComp.style.display = mod === 'completo' ? 'block' : 'none';
+  if (modPeri) modPeri.style.display = mod === 'periferico' ? 'block' : 'none';
+  const targetId = mod === 'completo' ? 'mod-completo' : 'mod-periferico';
+  setTimeout(() => {
+    const el = document.getElementById(targetId);
+    if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+  }, 100);
 }
 
 /* ══ Cargar datos del Sheet al iniciar ══ */
@@ -1058,14 +1066,17 @@ async function loadInv() {
   const tb = document.getElementById('inv-tbody');
   tb.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:28px;color:#aaa">Cargando desde Google Sheets...</td></tr>';
   try {
-    const data = await (await fetch(`${API}/api/inventario?_t=${Date.now()}`)).json();
-    sheetData  = data;
+    const res = await fetch(`${API}/api/inventario?_t=${Date.now()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error('Respuesta inválida');
+    sheetData = data;
     if (!data.length) {
       tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:28px;color:#aaa">Sin registros</td></tr>';
       return;
     }
     const chipClass = tipo => {
-      const t=(tipo||'').toLowerCase();
+      const t = safeStr(tipo).toLowerCase();
       if(t.includes('cpu')||t.includes('escritorio'))return'chip-escritorio';
       if(t.includes('monitor'))return'chip-monitor';
       if(t.includes('teclado'))return'chip-teclado';
@@ -1076,7 +1087,7 @@ async function loadInv() {
       return'chip-cpu';
     };
     const getFoto = r => {
-      const t=(r.tipo||'').toLowerCase();
+      const t = safeStr(r.tipo).toLowerCase();
       if(t.includes('monitor'))return r.foto_monitor;
       if(t.includes('teclado'))return r.foto_teclado;
       if(t.includes('mouse'))return r.foto_mouse;
@@ -1084,21 +1095,21 @@ async function loadInv() {
       return r.foto_cpu;
     };
     tb.innerHTML = data.map((r,i) => {
-      const op = (r.operativo||'').toUpperCase()==='SI';
+      const op = safeStr(r.operativo).toUpperCase() === 'SI';
       const foto = getFoto(r);
       return `<tr>
         <td>${i+1}</td>
-        <td><span class="chip ${chipClass(r.tipo)}">${r.tipo||'—'}</span></td>
-        <td style="font-size:11px">${r.codigo_bien||'—'}</td>
-        <td><strong>${r.marca||'—'}</strong></td>
-        <td>${r.modelo||'—'}</td>
-        <td style="font-family:monospace;font-size:11px">${r.serie||'—'}</td>
-        <td style="font-size:11px">${r.sistema_op||'—'}</td>
-        <td>${r.ram||'—'}</td>
-        <td style="font-size:11px">${r.responsable||'—'}</td>
-        <td style="font-size:11px">${r.dependencia||r.ubicacion||'—'}</td>
+        <td><span class="chip ${chipClass(r.tipo)}">${safeStr(r.tipo)||'—'}</span></td>
+        <td style="font-size:11px">${safeStr(r.codigo_bien)||'—'}</td>
+        <td><strong>${safeStr(r.marca)||'—'}</strong></td>
+        <td>${safeStr(r.modelo)||'—'}</td>
+        <td style="font-family:monospace;font-size:11px">${safeStr(r.serie)||'—'}</td>
+        <td style="font-size:11px">${safeStr(r.sistema_op)||'—'}</td>
+        <td>${safeStr(r.ram)||'—'}</td>
+        <td style="font-size:11px">${safeStr(r.responsable)||'—'}</td>
+        <td style="font-size:11px">${safeStr(r.dependencia||r.ubicacion)||'—'}</td>
         <td><span class="${op?'badge-si':'badge-no'}">${op?'✅ SI':'❌ NO'}</span></td>
-        <td style="font-family:monospace;font-size:11px">${r.ip||'—'}</td>
+        <td style="font-family:monospace;font-size:11px">${safeStr(r.ip)||'—'}</td>
         <td>${foto?`<img class="thumb" src="${foto}">`:'—'}</td>
       </tr>`;
     }).join('');

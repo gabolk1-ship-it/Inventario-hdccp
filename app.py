@@ -166,34 +166,40 @@ def leer_sheets() -> list:
     records = ws.get_all_records(head=1)
     result  = []
     for i, r in enumerate(records, start=2):
-        tipo = r.get("Tipo de bien", "").strip()
+        def s(k):
+            val = r.get(k, "")
+            if val is None:
+                return ""
+            return str(val).strip()
+
+        tipo = s("Tipo de bien")
         if not tipo:
             continue
         result.append({
             "fila":          i,
-            "id_unico":      r.get("ID_Unico", ""),
-            "codigo_bien":   r.get("Código del bien IESS", ""),
-            "codigo_aux":    r.get("Código Auxiliar (Unnamed: 1)", ""),
+            "id_unico":      s("ID_Unico"),
+            "codigo_bien":   s("Código del bien IESS"),
+            "codigo_aux":    s("Código Auxiliar (Unnamed: 1)"),
             "tipo":          tipo,
-            "marca":         r.get("Marca del equipo", ""),
-            "modelo":        r.get("Modelo del equipo", ""),
-            "serie":         r.get("Serie del equipo", ""),
-            "sistema_op":    r.get("Sistema Operativo", ""),
-            "ram":           r.get("Memoria RAM", ""),
-            "procesador":    r.get("Procesador", ""),
-            "dependencia":   r.get("Dependencia/Edificio", ""),
-            "ubicacion":     r.get("Ubicación / Area Funcional", ""),
-            "responsable":   r.get("Nombre del Custodio", ""),
-            "cedula":        r.get("Cédula Custodio", ""),
-            "operativo":     r.get("Operativo", ""),
-            "ip":            r.get("Dirección IP", ""),
-            "mac":           r.get("MAC Address", ""),
-            "hostname":      r.get("Nombre completo del equipo (hostname)", ""),
-            "foto_cpu":      r.get("Foto General CPU", ""),
-            "foto_monitor":  r.get("Foto General Monitor", ""),
-            "foto_teclado":  r.get("Foto General Teclado", ""),
-            "foto_mouse":    r.get("Foto General Mouse", ""),
-            "foto_impresora":r.get("Foto General Impresora", ""),
+            "marca":         s("Marca del equipo"),
+            "modelo":        s("Modelo del equipo"),
+            "serie":         s("Serie del equipo"),
+            "sistema_op":    s("Sistema Operativo"),
+            "ram":           s("Memoria RAM"),
+            "procesador":    s("Procesador"),
+            "dependencia":   s("Dependencia/Edificio"),
+            "ubicacion":     s("Ubicación / Area Funcional"),
+            "responsable":   s("Nombre del Custodio"),
+            "cedula":        s("Cédula Custodio"),
+            "operativo":     s("Operativo"),
+            "ip":            s("Dirección IP"),
+            "mac":           s("MAC Address"),
+            "hostname":      s("Nombre completo del equipo (hostname)"),
+            "foto_cpu":      s("Foto General CPU"),
+            "foto_monitor":  s("Foto General Monitor"),
+            "foto_teclado":  s("Foto General Teclado"),
+            "foto_mouse":    s("Foto General Mouse"),
+            "foto_impresora":s("Foto General Impresora"),
         })
     return result
 
