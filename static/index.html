@@ -268,7 +268,7 @@
 <header>
   <div class="brand">
     <img src="/iess-blue.jpeg" alt="IESS Hospital del Día Cotocollao" class="banner-iess">
-    <span class="badge-v">v4.1</span>
+    <span class="badge-v">v4.2</span>
   </div>
   <div class="nav-tabs">
     <button class="active" onclick="showPage('reg',this)">Registrar</button>
@@ -1123,16 +1123,34 @@ function verificarCoincidenciaC1() {
   const btn    = document.getElementById('btn-save-c1');
   const fHidden= document.getElementById('c1-fila');
 
-  let match = null;
-  if (Array.isArray(sheetData) && (codBien || serieEq || codAux)) {
-    for (const r of sheetData) {
-      const b = (r.codigo_bien || '').trim().toUpperCase();
-      const s = (r.serie || '').trim().toUpperCase();
-      const a = (r.codigo_aux || '').trim().toUpperCase();
+  const custVal = (document.getElementById('c1-custodio')?.value || '');
+  const [custCed, custResp] = custVal.split('|');
+  const custCedNorm = (custCed || document.getElementById('c1-cedula')?.value || '').trim();
+  const custRespNorm= (custResp || document.getElementById('c1-filtro-custodio')?.value || '').trim().toUpperCase();
 
-      if (codBien && b && codBien === b) { match = r; break; }
-      if (serieEq && s && serieEq === s && serieEq.length > 3) { match = r; break; }
-      if (codAux && a && codAux === a && codAux.length > 5) { match = r; break; }
+  let match = null;
+  if (Array.isArray(sheetData)) {
+    // 1. Si hay custodio y coincide con serie o bien de ese custodio:
+    if ((custCedNorm || custRespNorm) && (serieEq || codBien)) {
+      match = sheetData.find(r => {
+        const cMatch = (custCedNorm && safeStr(r.cedula) === custCedNorm) ||
+                       (custRespNorm && safeStr(r.responsable).toUpperCase().includes(custRespNorm));
+        const eqMatch= (serieEq && safeStr(r.serie).toUpperCase() === serieEq) ||
+                       (codBien && safeStr(r.codigo_bien).toUpperCase() === codBien);
+        return cMatch && eqMatch;
+      });
+    }
+    // 2. Si no hubo match por custodio, buscar por bien, serie o código auxiliar
+    if (!match && (codBien || serieEq || codAux)) {
+      for (const r of sheetData) {
+        const b = (r.codigo_bien || '').trim().toUpperCase();
+        const s = (r.serie || '').trim().toUpperCase();
+        const a = (r.codigo_aux || '').trim().toUpperCase();
+
+        if (codBien && b && codBien === b) { match = r; break; }
+        if (serieEq && s && serieEq === s && serieEq.length > 3) { match = r; break; }
+        if (codAux && a && codAux === a && codAux.length > 5) { match = r; break; }
+      }
     }
   }
 
@@ -1264,6 +1282,7 @@ async function guardar(mod) {
       fd.append('hostname',          g('c1-hostname'));
       fd.append('ip',                g('c1-ip'));
       fd.append('mac',               g('c1-mac'));
+      fd.append('usuarios',          g('c1-usuarios'));
       fd.append('cedula_custodio',   cedulaCust);
       fd.append('responsable',       respCust);
       fd.append('dependencia',       g('c1-dependencia'));
@@ -1337,6 +1356,7 @@ async function guardar(mod) {
     const json = await res.json().catch(() => null);
     if (res.ok && json) {
       toast(json.message || 'Guardado correctamente en Google Sheets', 'ok');
+      limpiarFormulario(mod);
       await cargarSheetData();  // refresca listas
     } else if (res.status === 413) {
       toast('Las fotos exceden el tamaño máximo permitido por el servidor.', 'err');
@@ -1352,6 +1372,106 @@ async function guardar(mod) {
       btn.disabled = false;
       btn.innerHTML = btnOriginal;
     }
+  }
+}
+
+/* ══ Limpiar Formulario tras Confirmación ══ */
+function limpiarFormulario(mod) {
+  if (mod === 'completo') {
+    ['c1-filtro-custodio', 'c1-cedula', 'c1-dependencia', 'c1-ubicacion',
+     'c1-marca', 'c1-modelo', 'c1-serie', 'c1-so', 'c1-ram', 'c1-cpu',
+     'c1-disco-tam', 'c1-hostname', 'c1-ip', 'c1-mac', 'c1-usuarios',
+     'c1-codigo-bien', 'c1-codigo-aux', 'c1-proveedor', 'c1-fila'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.value = ''; el.classList.remove('auto'); }
+    });
+
+    const selCust = document.getElementById('c1-custodio');
+    if (selCust) selCust.value = '';
+
+    selTipoC1('COMPUTADOR DE ESCRITORIO', document.getElementById('chip-c1-escritorio'));
+
+    const batFile = document.getElementById('bat-file');
+    if (batFile) batFile.value = '';
+    const batOk = document.getElementById('bat-ok');
+    if (batOk) batOk.style.display = 'none';
+    const batZone = document.getElementById('bat-zone');
+    if (batZone) batZone.style.borderColor = '';
+
+    ['c1-foto-eq', 'c1-foto-et', 'c1-foto-aux'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    ['c1-prev-eq', 'c1-prev-et', 'c1-prev-aux'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.style.display = 'none'; el.src = ''; }
+    });
+    ['c1-icon-eq', 'c1-icon-et', 'c1-icon-aux'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'block';
+    });
+    ['c1-zone-eq', 'c1-zone-et', 'c1-zone-aux'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('has-foto');
+    });
+
+    const ocrText = document.getElementById('c1-ocr-text');
+    if (ocrText) ocrText.textContent = 'Toma foto de la Placa del Bien IESS o de la etiqueta de Código Auxiliar...';
+    const ocrSt = document.getElementById('c1-ocr-st');
+    if (ocrSt) ocrSt.textContent = '';
+    const ocrFill = document.getElementById('c1-ocr-fill');
+    if (ocrFill) ocrFill.style.width = '0%';
+
+    const banner = document.getElementById('c1-match-banner');
+    if (banner) { banner.style.display = 'none'; banner.innerHTML = ''; }
+    selEstado('c1', 'Bueno', document.querySelector('#mod-completo .estado-pill'));
+    const btn = document.getElementById('btn-save-c1');
+    if (btn) {
+      btn.innerHTML = 'Guardar Computador / CPU en Google Sheets';
+      btn.style.background = 'linear-gradient(135deg,#0284c7,#0369a1)';
+    }
+  } else {
+    ['p-filtro-equipo', 'p-custodio-display', 'p-ubicacion-display',
+     'p-codigo-bien', 'p-codigo-aux', 'p-marca', 'p-modelo', 'p-serie'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.value = ''; el.classList.remove('auto'); }
+    });
+
+    const pEq = document.getElementById('p-equipo');
+    if (pEq) pEq.value = '';
+
+    const pTipo = document.getElementById('p-tipo');
+    if (pTipo) pTipo.value = '';
+    periActivo = '';
+    document.querySelectorAll('#mod-periferico .peri-chip').forEach(c => c.className = 'peri-chip');
+
+    ['p-foto-eq', 'p-foto-et', 'p-foto-aux'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    ['p-prev-eq', 'p-prev-et', 'p-prev-aux'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.style.display = 'none'; el.src = ''; }
+    });
+    ['p-icon-eq', 'p-icon-et', 'p-icon-aux'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'block';
+    });
+    ['p-zone-eq', 'p-zone-et', 'p-zone-aux'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('has-foto');
+    });
+
+    const ocrText = document.getElementById('p-ocr-text');
+    if (ocrText) ocrText.textContent = 'Toma foto de la Placa del Bien IESS o de la etiqueta de Código Auxiliar...';
+    const ocrSt = document.getElementById('p-ocr-st');
+    if (ocrSt) ocrSt.textContent = '';
+    const ocrFill = document.getElementById('p-ocr-fill');
+    if (ocrFill) ocrFill.style.width = '0%';
+
+    selEstado('p', 'Bueno', document.querySelector('#mod-periferico .estado-pill'));
+    const btnSave = document.getElementById('btn-save-peri');
+    if (btnSave) btnSave.innerHTML = 'Guardar Componente en Google Sheets';
   }
 }
 

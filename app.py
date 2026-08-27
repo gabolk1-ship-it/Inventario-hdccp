@@ -146,16 +146,34 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
 
     # Si no se pasó fila explícita, buscar inteligentemente coincidencia
     if not fila_num and len(todas_filas) > 1:
-        cod_bien = (data.get("codigo_bien") or "").strip().upper()
-        serie_eq = (data.get("serie") or "").strip().upper()
-        cod_aux  = (data.get("codigo_auxiliar") or "").strip().upper()
+        cod_bien  = (data.get("codigo_bien") or "").strip().upper()
+        serie_eq  = (data.get("serie") or "").strip().upper()
+        cod_aux   = (data.get("codigo_auxiliar") or "").strip().upper()
+        resp_cust = (data.get("responsable") or "").strip().upper()
+        ced_cust  = (data.get("cedula_custodio") or "").strip().upper()
 
         col_bien_i = col_idx(headers, "Código del bien IESS")
         col_ser_i  = col_idx(headers, "Serie del equipo")
         col_aux_i  = col_idx(headers, "Código Auxiliar (Unnamed: 1)")
+        col_resp_i = col_idx(headers, "Nombre del Custodio")
+        col_ced_i  = col_idx(headers, "Cédula Custodio")
 
-        # 1. Prioridad: Coincidencia doble (Código Bien Y Serie)
-        if cod_bien and serie_eq and len(serie_eq) > 3:
+        # 1. Prioridad: Coincidencia Custodio + (Serie o Código Bien)
+        if (resp_cust or ced_cust) and (serie_eq or cod_bien):
+            for num_f in range(len(todas_filas), 1, -1):
+                r = todas_filas[num_f - 1]
+                val_resp = r[col_resp_i].strip().upper() if col_resp_i is not None and col_resp_i < len(r) else ""
+                val_ced  = r[col_ced_i].strip().upper()  if col_ced_i is not None and col_ced_i < len(r) else ""
+                val_ser  = r[col_ser_i].strip().upper()  if col_ser_i is not None and col_ser_i < len(r) else ""
+                val_bien = r[col_bien_i].strip().upper() if col_bien_i is not None and col_bien_i < len(r) else ""
+                cust_match = (resp_cust and (resp_cust in val_resp or val_resp in resp_cust)) or (ced_cust and ced_cust == val_ced)
+                eq_match   = (serie_eq and val_ser == serie_eq) or (cod_bien and val_bien == cod_bien)
+                if cust_match and eq_match:
+                    fila_num = num_f
+                    break
+
+        # 2. Prioridad: Coincidencia doble (Código Bien Y Serie)
+        if not fila_num and cod_bien and serie_eq and len(serie_eq) > 3:
             for num_f in range(len(todas_filas), 1, -1):
                 r = todas_filas[num_f - 1]
                 val_bien = r[col_bien_i].strip().upper() if col_bien_i is not None and col_bien_i < len(r) else ""
@@ -164,7 +182,7 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
                     fila_num = num_f
                     break
 
-        # 2. Coincidencia por Código del Bien IESS (ej: IM-0831)
+        # 3. Coincidencia por Código del Bien IESS (ej: IM-0831)
         if not fila_num and cod_bien:
             for num_f in range(len(todas_filas), 1, -1):
                 r = todas_filas[num_f - 1]
@@ -173,7 +191,7 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
                     fila_num = num_f
                     break
 
-        # 3. Coincidencia por Serie del equipo (ej: MXL7050PM4)
+        # 4. Coincidencia por Serie del equipo (ej: MXL7050PM4)
         if not fila_num and serie_eq and len(serie_eq) > 3:
             for num_f in range(len(todas_filas), 1, -1):
                 r = todas_filas[num_f - 1]
@@ -182,7 +200,7 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
                     fila_num = num_f
                     break
 
-        # 4. Coincidencia por Código Auxiliar (ej: 4003600006707)
+        # 5. Coincidencia por Código Auxiliar (ej: 4003600006707)
         if not fila_num and cod_aux and len(cod_aux) > 5:
             for num_f in range(len(todas_filas), 1, -1):
                 r = todas_filas[num_f - 1]
@@ -223,10 +241,12 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
             if data.get("hostname"):          sc("Nombre completo del equipo (hostname)", data["hostname"])
             if data.get("ip"):                sc("Dirección IP", data["ip"])
             if data.get("mac"):               sc("MAC Address", data["mac"])
+            if data.get("usuarios"):          sc("Usuarios Perfiles", data["usuarios"])
             if data.get("dependencia"):       sc("Dependencia/Edificio", data["dependencia"])
             if data.get("ubicacion"):         sc("Ubicación / Area Funcional", data["ubicacion"])
             if data.get("responsable"):       sc("Nombre del Custodio", data["responsable"])
             if data.get("cedula_custodio"):   sc("Cédula Custodio", data["cedula_custodio"])
+            if data.get("proveedor"):         sc("Proveedor del equipo", data["proveedor"])
             if data.get("ciudad"):            sc("Ciudad", data["ciudad"])
             if data.get("estado"):            sc("Operativo", "SI" if data["estado"] == "Bueno" else "NO")
 
@@ -456,11 +476,15 @@ async def crear_registro(
     sistema_operativo: str  = Form(""),
     ram:               str  = Form(""),
     procesador:        str  = Form(""),
+    disco_tam:         str  = Form(""),
+    disco_unidad:      str  = Form("GB"),
     ip:                str  = Form(""),
     mac:               str  = Form(""),
     hostname:          str  = Form(""),
+    usuarios:          str  = Form(""),
     codigo_bien:       str  = Form(""),
     codigo_auxiliar:   str  = Form(""),
+    proveedor:         str  = Form(""),
     ciudad:            str  = Form("QUITO"),
     estado:            str  = Form("Bueno"),
     ocr_raw:           str  = Form(""),
@@ -496,8 +520,10 @@ async def crear_registro(
         id_unico=id_unico, codigo_bien=codigo_bien, codigo_auxiliar=codigo_auxiliar,
         tipo=tipo, marca=marca, modelo=modelo, serie=serie,
         sistema_operativo=sistema_operativo, ram=ram, procesador=procesador,
+        disco_tam=disco_tam, disco_unidad=disco_unidad,
         dependencia=dependencia, ubicacion=ubicacion, ciudad=ciudad,
         cedula_custodio=cedula_custodio, responsable=responsable,
+        proveedor=proveedor, usuarios=usuarios,
         ip=ip, mac=mac, hostname=hostname, estado=estado,
         foto_equipo=url_equipo or "",
         foto_etiqueta=foto_etiqueta_final,
