@@ -72,10 +72,10 @@ def subir_a_drive(contenido: bytes, nombre: str, mime: str = "image/jpeg") -> st
             "metadata": (None, json.dumps(meta), "application/json; charset=UTF-8"),
             "file": (nombre, contenido, mime)
         },
-        timeout=25
+        timeout=4
     )
     if r_up.status_code not in (200, 201):
-        raise Exception(f"Google Drive HTTP {r_up.status_code}: {r_up.text[:300]}")
+        raise Exception(f"Google Drive HTTP {r_up.status_code}: {r_up.text[:200]}")
 
     file_id = r_up.json().get("id")
 
@@ -85,7 +85,7 @@ def subir_a_drive(contenido: bytes, nombre: str, mime: str = "image/jpeg") -> st
             f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions?supportsAllDrives=true",
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
             json={"type": "anyone", "role": "reader"},
-            timeout=10
+            timeout=3
         )
     except Exception as ex_perm:
         print(f"Aviso al asignar permisos en Drive: {ex_perm}")
@@ -94,7 +94,7 @@ def subir_a_drive(contenido: bytes, nombre: str, mime: str = "image/jpeg") -> st
 
 
 async def procesar_imagen(archivo: Optional[UploadFile]) -> Optional[str]:
-    """Lee el UploadFile, lo sube a Drive y retorna la URL."""
+    """Lee el UploadFile, lo sube a Drive y retorna la URL sin bloquear la app."""
     if not archivo or not archivo.filename:
         return None
     try:
@@ -104,7 +104,7 @@ async def procesar_imagen(archivo: Optional[UploadFile]) -> Optional[str]:
         nombre = f"inventario_{uuid.uuid4().hex}{ext}"
         return subir_a_drive(contenido, nombre, mime)
     except Exception as e:
-        print(f"Error subiendo imagen a Drive: {e}")
+        print(f"Aviso: No se pudo subir foto a Drive: {e}")
         return None
 
 # ─── Helpers Sheets ────────────────────────────────────────────────────────────
@@ -131,6 +131,7 @@ FOTO_COLS = {
 }
 
 def escribir_sheets(data: dict) -> tuple[int, bool]:
+    import gspread.utils
     ws      = get_sheet()
     headers = ws.row_values(1)
     
@@ -143,8 +144,7 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
 
     todas_filas = ws.get_all_values()
 
-    # Si no vino fila explícita, buscar inteligentemente en el inventario
-    # por Código del Bien (ej: IM-0831), Serie (ej: MXL7050PM4) o Código Auxiliar (ej: 4003600006707)
+    # Si no se pasó fila explícita, buscar inteligentemente coincidencia
     if not fila_num and len(todas_filas) > 1:
         cod_bien = (data.get("codigo_bien") or "").strip().upper()
         serie_eq = (data.get("serie") or "").strip().upper()
@@ -205,44 +205,65 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
             if i is not None and val:
                 fila[i] = str(val)
 
-        # Solo actualizar los campos que traen información nueva sin borrar especificaciones previas
-        if data.get("codigo_bien"):       sc("Código del bien IESS", data["codigo_bien"])
-        if data.get("codigo_auxiliar"):   sc("Código Auxiliar (Unnamed: 1)", data["codigo_auxiliar"])
-        if data.get("marca"):             sc("Marca del equipo", data["marca"])
-        if data.get("modelo"):            sc("Modelo del equipo", data["modelo"])
-        if data.get("serie"):             sc("Serie del equipo", data["serie"])
-        if data.get("sistema_operativo"): sc("Sistema Operativo", data["sistema_operativo"])
-        if data.get("ram"):               sc("Memoria RAM", data["ram"])
-        if data.get("procesador"):        sc("Procesador", data["procesador"])
-        if data.get("disco_tam"):         sc("Tamaño del Disco", data["disco_tam"])
-        if data.get("disco_unidad"):      sc("Unidad Disco", data["disco_unidad"])
-        if data.get("hostname"):          sc("Nombre completo del equipo (hostname)", data["hostname"])
-        if data.get("ip"):                sc("Dirección IP", data["ip"])
-        if data.get("mac"):               sc("MAC Address", data["mac"])
-        if data.get("dependencia"):       sc("Dependencia/Edificio", data["dependencia"])
-        if data.get("ubicacion"):         sc("Ubicación / Area Funcional", data["ubicacion"])
-        if data.get("responsable"):       sc("Nombre del Custodio", data["responsable"])
-        if data.get("cedula_custodio"):   sc("Cédula Custodio", data["cedula_custodio"])
-        if data.get("ciudad"):            sc("Ciudad", data["ciudad"])
-        if data.get("estado"):            sc("Operativo", "SI" if data["estado"] == "Bueno" else "NO")
-
-        # Marcar tipo si corresponde
         tipo_str = (data.get("tipo") or "").upper()
-        if "TODO EN UNO" in tipo_str or "AIO" in tipo_str:
-            sc("COMPUTADOR TODO EN UNO", "1")
-        elif "PORTÁTIL" in tipo_str or "PORTATIL" in tipo_str:
-            sc("COMPUTADOR PORTÁTIL", "1")
-        elif "ESCRITORIO" in tipo_str or "CPU" in tipo_str:
-            sc("COMPUTADOR DE ESCRITORIO", "1")
+        es_periferico = any(p in tipo_str for p in ["MONITOR", "TECLADO", "MOUSE", "IMPRESORA"])
 
-        prefix = tipo_prefix(data.get("tipo", ""))
-        if prefix in FOTO_COLS:
-            c_eq, c_et, c_ocr = FOTO_COLS[prefix]
-            if data.get("foto_equipo"):   sc(c_eq, data["foto_equipo"])
-            if data.get("foto_etiqueta"): sc(c_et, data["foto_etiqueta"])
-            if data.get("ocr_raw"):       sc(c_ocr, data["ocr_raw"])
+        if not es_periferico:
+            # Solo actualizar los campos del equipo principal
+            if data.get("codigo_bien"):       sc("Código del bien IESS", data["codigo_bien"])
+            if data.get("codigo_auxiliar"):   sc("Código Auxiliar (Unnamed: 1)", data["codigo_auxiliar"])
+            if data.get("marca"):             sc("Marca del equipo", data["marca"])
+            if data.get("modelo"):            sc("Modelo del equipo", data["modelo"])
+            if data.get("serie"):             sc("Serie del equipo", data["serie"])
+            if data.get("sistema_operativo"): sc("Sistema Operativo", data["sistema_operativo"])
+            if data.get("ram"):               sc("Memoria RAM", data["ram"])
+            if data.get("procesador"):        sc("Procesador", data["procesador"])
+            if data.get("disco_tam"):         sc("Tamaño del Disco", data["disco_tam"])
+            if data.get("disco_unidad"):      sc("Unidad Disco", data["disco_unidad"])
+            if data.get("hostname"):          sc("Nombre completo del equipo (hostname)", data["hostname"])
+            if data.get("ip"):                sc("Dirección IP", data["ip"])
+            if data.get("mac"):               sc("MAC Address", data["mac"])
+            if data.get("dependencia"):       sc("Dependencia/Edificio", data["dependencia"])
+            if data.get("ubicacion"):         sc("Ubicación / Area Funcional", data["ubicacion"])
+            if data.get("responsable"):       sc("Nombre del Custodio", data["responsable"])
+            if data.get("cedula_custodio"):   sc("Cédula Custodio", data["cedula_custodio"])
+            if data.get("ciudad"):            sc("Ciudad", data["ciudad"])
+            if data.get("estado"):            sc("Operativo", "SI" if data["estado"] == "Bueno" else "NO")
 
-        ws.update([fila], f"A{fila_num}", value_input_option="USER_ENTERED")
+            if "TODO EN UNO" in tipo_str or "AIO" in tipo_str:
+                sc("COMPUTADOR TODO EN UNO", "1")
+            elif "PORTÁTIL" in tipo_str or "PORTATIL" in tipo_str:
+                sc("COMPUTADOR PORTÁTIL", "1")
+            elif "ESCRITORIO" in tipo_str or "CPU" in tipo_str:
+                sc("COMPUTADOR DE ESCRITORIO", "1")
+
+            prefix = tipo_prefix(tipo_str)
+            if prefix in FOTO_COLS:
+                c_eq, c_et, c_ocr = FOTO_COLS[prefix]
+                if data.get("foto_equipo"):   sc(c_eq, data["foto_equipo"])
+                if data.get("foto_etiqueta"): sc(c_et, data["foto_etiqueta"])
+                if data.get("ocr_raw"):       sc(c_ocr, data["ocr_raw"])
+        else:
+            # Es un periférico (Monitor, Teclado, Mouse, Impresora) asociado al computador
+            partes_peri = []
+            if data.get("codigo_bien"):     partes_peri.append(f"Bien: {data['codigo_bien']}")
+            if data.get("codigo_auxiliar"): partes_peri.append(f"Aux: {data['codigo_auxiliar']}")
+            if data.get("serie"):           partes_peri.append(f"S/N: {data['serie']}")
+            if data.get("marca"):           partes_peri.append(f"Marca: {data['marca']}")
+            if data.get("modelo"):          partes_peri.append(f"Modelo: {data['modelo']}")
+            if data.get("estado"):          partes_peri.append(f"Estado: {data['estado']}")
+            if data.get("ocr_raw"):         partes_peri.append(f"OCR: {data['ocr_raw']}")
+            resumen_peri = " | ".join(partes_peri)
+
+            prefix = tipo_prefix(tipo_str)
+            if prefix in FOTO_COLS:
+                c_eq, c_et, c_ocr = FOTO_COLS[prefix]
+                if data.get("foto_equipo"):   sc(c_eq, data["foto_equipo"])
+                if data.get("foto_etiqueta"): sc(c_et, data["foto_etiqueta"])
+                if resumen_peri:              sc(c_ocr, resumen_peri)
+
+        col_end = gspread.utils.rowcol_to_a1(1, len(fila)).rstrip("0123456789")
+        ws.update([fila], f"A{fila_num}:{col_end}{fila_num}", value_input_option="USER_ENTERED")
         return fila_num, True
 
     # Si NO existe, es registro nuevo: append_row
@@ -300,44 +321,64 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
 
 
 def leer_sheets() -> list:
-    ws      = get_sheet()
-    records = ws.get_all_records(head=1)
-    result  = []
-    for i, r in enumerate(records, start=2):
-        def s(k):
-            val = r.get(k, "")
-            if val is None:
-                return ""
-            return str(val).strip()
+    ws       = get_sheet()
+    all_vals = ws.get_all_values()
+    if not all_vals or len(all_vals) < 2:
+        return []
+    headers = all_vals[0]
 
-        tipo = s("Tipo de bien")
+    def get_col(row, col_name):
+        idx = col_idx(headers, col_name)
+        if idx is not None and idx < len(row):
+            v = row[idx]
+            return str(v).strip() if v is not None else ""
+        return ""
+
+    result = []
+    for i in range(1, len(all_vals)):
+        r = all_vals[i]
+        num_fila = i + 1
+
+        tipo = get_col(r, "Tipo de bien")
         if not tipo:
-            continue
+            if get_col(r, "COMPUTADOR TODO EN UNO") in ("1", "SI", "X"):
+                tipo = "COMPUTADOR TODO EN UNO"
+            elif get_col(r, "COMPUTADOR PORTÁTIL") in ("1", "SI", "X"):
+                tipo = "COMPUTADOR PORTÁTIL"
+            elif get_col(r, "COMPUTADOR DE ESCRITORIO") in ("1", "SI", "X"):
+                tipo = "COMPUTADOR DE ESCRITORIO"
+            elif get_col(r, "SERVIDOR FÍSICO") in ("1", "SI", "X"):
+                tipo = "SERVIDOR"
+            elif get_col(r, "Serie del equipo") or get_col(r, "Código del bien IESS") or get_col(r, "Nombre del Custodio"):
+                tipo = "COMPUTADOR DE ESCRITORIO"
+            else:
+                continue
+
         result.append({
-            "fila":          i,
-            "id_unico":      s("ID_Unico"),
-            "codigo_bien":   s("Código del bien IESS"),
-            "codigo_aux":    s("Código Auxiliar (Unnamed: 1)"),
+            "fila":          num_fila,
+            "id_unico":      get_col(r, "ID_Unico"),
+            "codigo_bien":   get_col(r, "Código del bien IESS"),
+            "codigo_aux":    get_col(r, "Código Auxiliar (Unnamed: 1)"),
             "tipo":          tipo,
-            "marca":         s("Marca del equipo"),
-            "modelo":        s("Modelo del equipo"),
-            "serie":         s("Serie del equipo"),
-            "sistema_op":    s("Sistema Operativo"),
-            "ram":           s("Memoria RAM"),
-            "procesador":    s("Procesador"),
-            "dependencia":   s("Dependencia/Edificio"),
-            "ubicacion":     s("Ubicación / Area Funcional"),
-            "responsable":   s("Nombre del Custodio"),
-            "cedula":        s("Cédula Custodio"),
-            "operativo":     s("Operativo"),
-            "ip":            s("Dirección IP"),
-            "mac":           s("MAC Address"),
-            "hostname":      s("Nombre completo del equipo (hostname)"),
-            "foto_cpu":      s("Foto General CPU"),
-            "foto_monitor":  s("Foto General Monitor"),
-            "foto_teclado":  s("Foto General Teclado"),
-            "foto_mouse":    s("Foto General Mouse"),
-            "foto_impresora":s("Foto General Impresora"),
+            "marca":         get_col(r, "Marca del equipo"),
+            "modelo":        get_col(r, "Modelo del equipo"),
+            "serie":         get_col(r, "Serie del equipo"),
+            "sistema_op":    get_col(r, "Sistema Operativo"),
+            "ram":           get_col(r, "Memoria RAM"),
+            "procesador":    get_col(r, "Procesador"),
+            "dependencia":   get_col(r, "Dependencia/Edificio"),
+            "ubicacion":     get_col(r, "Ubicación / Area Funcional"),
+            "responsable":   get_col(r, "Nombre del Custodio"),
+            "cedula":        get_col(r, "Cédula Custodio"),
+            "operativo":     get_col(r, "Operativo"),
+            "ip":            get_col(r, "Dirección IP"),
+            "mac":           get_col(r, "MAC Address"),
+            "hostname":      get_col(r, "Nombre completo del equipo (hostname)"),
+            "foto_cpu":      get_col(r, "Foto General CPU"),
+            "foto_monitor":  get_col(r, "Foto General Monitor"),
+            "foto_teclado":  get_col(r, "Foto General Teclado"),
+            "foto_mouse":    get_col(r, "Foto General Mouse"),
+            "foto_impresora":get_col(r, "Foto General Impresora"),
         })
     return result
 
@@ -384,7 +425,7 @@ def download_bat():
 
 @app.get("/iess-blue.jpeg", include_in_schema=False)
 @app.get("/images/iess-blue.jpeg", include_in_schema=False)
-def get_iess_blue():
+def get_banner_blue():
     for p in [
         os.path.join(os.path.dirname(__file__), "images", "iess-blue.jpeg"),
         os.path.join(static_dir, "iess-blue.jpeg")
@@ -428,11 +469,24 @@ async def crear_registro(
     foto_auxiliar: Optional[UploadFile] = File(None),
     foto_equipo:   Optional[UploadFile] = File(None),
 ):
-    # Subir imágenes a Google Drive
-    url_etiqueta = await procesar_imagen(foto_etiqueta)
-    url_auxiliar = await procesar_imagen(foto_auxiliar)
-    url_equipo   = await procesar_imagen(foto_equipo)
-    id_unico     = str(uuid.uuid4())
+    import asyncio
+
+    # Subir imágenes a Google Drive en paralelo (con timeout seguro para no bloquear Sheets)
+    async def _safe_subir(archivo):
+        if not archivo or not archivo.filename:
+            return None
+        try:
+            return await asyncio.wait_for(procesar_imagen(archivo), timeout=4.0)
+        except Exception as ex_f:
+            print(f"Aviso al procesar foto {getattr(archivo, 'filename', '')}: {ex_f}")
+            return None
+
+    url_etiqueta, url_auxiliar, url_equipo = await asyncio.gather(
+        _safe_subir(foto_etiqueta),
+        _safe_subir(foto_auxiliar),
+        _safe_subir(foto_equipo),
+    )
+    id_unico = str(uuid.uuid4())
 
     # Combinar URLs de fotos de etiquetas si ambas existen
     urls_et = [u for u in [url_etiqueta, url_auxiliar] if u]

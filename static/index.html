@@ -268,7 +268,7 @@
 <header>
   <div class="brand">
     <img src="/iess-blue.jpeg" alt="IESS Hospital del Día Cotocollao" class="banner-iess">
-    <span class="badge-v">v4.0</span>
+    <span class="badge-v">v4.1</span>
   </div>
   <div class="nav-tabs">
     <button class="active" onclick="showPage('reg',this)">Registrar</button>
@@ -678,7 +678,9 @@ window.onunhandledrejection = function(e) {
   console.warn("Unhandled Promise:", e.reason);
 };
 
-const API = window.location.origin;
+const API = (window.location.origin && window.location.origin !== 'null' && !window.location.protocol.startsWith('file'))
+  ? window.location.origin
+  : 'https://inventcotoco.vercel.app';
 let sheetData = [];   // cache de los datos del sheet
 let modActivo = '';
 
@@ -925,9 +927,10 @@ function cargarBat() {
       }
 
       document.getElementById('bat-ok').style.display = 'block';
-      document.getElementById('bat-zone').style.borderColor = '#34a853';
-      toast('✅ Datos del sistema cargados correctamente', 'ok');
-    } catch { toast('❌ El archivo no tiene formato válido', 'err'); }
+      document.getElementById('bat-zone').style.borderColor = '#059669';
+      verificarCoincidenciaC1();
+      toast('Datos del sistema cargados correctamente', 'ok');
+    } catch { toast('El archivo no tiene formato válido', 'err'); }
   };
   reader.readAsText(file);
 }
@@ -936,43 +939,50 @@ function cargarBat() {
 async function comprimirImagen(file, maxDim = 1280, calidad = 0.75) {
   if (!file || !file.type || !file.type.startsWith('image/')) return file;
   return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(file), 2500);
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        let w = img.width;
-        let h = img.height;
-        if (w > maxDim || h > maxDim) {
-          if (w > h) {
-            h = Math.round((h * maxDim) / w);
-            w = maxDim;
-          } else {
-            w = Math.round((w * maxDim) / h);
-            h = maxDim;
+        try {
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
           }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(
+            (blob) => {
+              clearTimeout(timer);
+              if (!blob) { resolve(file); return; }
+              const compressed = new File([blob], (file.name || 'foto.jpg').replace(/\.[^.]+$/, '.jpg'), {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              resolve(compressed);
+            },
+            'image/jpeg',
+            calidad
+          );
+        } catch {
+          clearTimeout(timer);
+          resolve(file);
         }
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) { resolve(file); return; }
-            const compressed = new File([blob], (file.name || 'foto.jpg').replace(/\.[^.]+$/, '.jpg'), {
-              type: 'image/jpeg',
-              lastModified: Date.now()
-            });
-            resolve(compressed);
-          },
-          'image/jpeg',
-          calidad
-        );
       };
-      img.onerror = () => resolve(file);
+      img.onerror = () => { clearTimeout(timer); resolve(file); };
       img.src = e.target.result;
     };
-    reader.onerror = () => resolve(file);
+    reader.onerror = () => { clearTimeout(timer); resolve(file); };
     reader.readAsDataURL(file);
   });
 }
@@ -1239,6 +1249,9 @@ async function guardar(mod) {
       const g = id => document.getElementById(id)?.value || '';
       const custVal = g('c1-custodio');
       const [cedula, responsable] = custVal.split('|');
+      const cedulaCust = cedula || g('c1-cedula');
+      const respCust   = responsable || g('c1-filtro-custodio');
+
       fd.append('tipo',              g('c1-tipo') || 'COMPUTADOR DE ESCRITORIO');
       fd.append('marca',             g('c1-marca'));
       fd.append('modelo',            g('c1-modelo'));
@@ -1251,8 +1264,8 @@ async function guardar(mod) {
       fd.append('hostname',          g('c1-hostname'));
       fd.append('ip',                g('c1-ip'));
       fd.append('mac',               g('c1-mac'));
-      fd.append('cedula_custodio',   cedula || '');
-      fd.append('responsable',       responsable || '');
+      fd.append('cedula_custodio',   cedulaCust);
+      fd.append('responsable',       respCust);
       fd.append('dependencia',       g('c1-dependencia'));
       fd.append('ubicacion',         g('c1-ubicacion'));
       fd.append('codigo_bien',       g('c1-codigo-bien'));
@@ -1265,16 +1278,16 @@ async function guardar(mod) {
       const f1 = document.getElementById('c1-fila')?.value;
       if (f1) fd.append('fila', f1);
 
-      const fe = document.getElementById('c1-foto-et').files[0];
-      const fa = document.getElementById('c1-foto-aux')?.files[0];
-      const fq = document.getElementById('c1-foto-eq').files[0];
+      const fe = document.getElementById('c1-foto-et')?.files?.[0];
+      const fa = document.getElementById('c1-foto-aux')?.files?.[0];
+      const fq = document.getElementById('c1-foto-eq')?.files?.[0];
       if (fe) fd.append('foto_etiqueta', await comprimirImagen(fe));
       if (fa) fd.append('foto_auxiliar', await comprimirImagen(fa));
       if (fq) fd.append('foto_equipo',   await comprimirImagen(fq));
 
     } else {
       if (!periActivo) {
-        toast('⚠️ Selecciona qué elemento vas a registrar (CPU, Monitor, etc.)', 'err');
+        toast('Selecciona qué elemento vas a registrar (CPU, Monitor, etc.)', 'err');
         if (btn) { btn.disabled = false; btn.innerHTML = btnOriginal; }
         return;
       }
@@ -1312,9 +1325,9 @@ async function guardar(mod) {
         }
       }
 
-      const fe = document.getElementById('p-foto-et').files[0];
-      const fa = document.getElementById('p-foto-aux')?.files[0];
-      const fq = document.getElementById('p-foto-eq').files[0];
+      const fe = document.getElementById('p-foto-et')?.files?.[0];
+      const fa = document.getElementById('p-foto-aux')?.files?.[0];
+      const fq = document.getElementById('p-foto-eq')?.files?.[0];
       if (fe) fd.append('foto_etiqueta', await comprimirImagen(fe));
       if (fa) fd.append('foto_auxiliar', await comprimirImagen(fa));
       if (fq) fd.append('foto_equipo',   await comprimirImagen(fq));
@@ -1323,17 +1336,17 @@ async function guardar(mod) {
     const res  = await fetch(`${API}/api/inventario`, {method:'POST', body:fd});
     const json = await res.json().catch(() => null);
     if (res.ok && json) {
-      toast(json.message || '✅ Guardado correctamente en Google Sheets', 'ok');
+      toast(json.message || 'Guardado correctamente en Google Sheets', 'ok');
       await cargarSheetData();  // refresca listas
     } else if (res.status === 413) {
-      toast('❌ Las fotos exceden el tamaño máximo permitido por el servidor.', 'err');
+      toast('Las fotos exceden el tamaño máximo permitido por el servidor.', 'err');
     } else {
       const errDetail = (json && (json.detail || json.message)) || `Error del servidor (HTTP ${res.status})`;
-      toast('❌ ' + errDetail, 'err');
+      toast(errDetail, 'err');
     }
   } catch(err) {
     console.error('Error al guardar:', err);
-    toast('❌ Error de conexión: ' + (err.message || 'Intente nuevamente'), 'err');
+    toast('Error de conexión: ' + (err.message || 'Intente nuevamente'), 'err');
   } finally {
     if (btn) {
       btn.disabled = false;
