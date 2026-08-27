@@ -388,6 +388,16 @@ def test_conexion():
     except Exception as e:
         resultado["sheets_conectado"] = False
         resultado["sheets_error"]     = str(e)
+
+    # 3 — ¿Puede subir a Drive?
+    try:
+        url_d = subir_a_drive(b"test", "test.txt", "text/plain")
+        resultado["drive_ok"] = True
+        resultado["drive_url"] = url_d
+    except Exception as ex_d:
+        resultado["drive_ok"] = False
+        resultado["drive_error"] = str(ex_d)
+
     return resultado
 
 
