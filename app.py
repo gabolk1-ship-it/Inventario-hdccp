@@ -394,8 +394,8 @@ Reglas de extracción:
 - "texto_leido": Todo el texto relevante que logres transcribir de la etiqueta.
 """
 
-        modelos = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"]
-        ultimo_error = ""
+        modelos = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash"]
+        errores_modelos = []
 
         for mod in modelos:
             try:
@@ -430,14 +430,14 @@ Reglas de extracción:
                             "datos": parsed
                         }
                 else:
-                    ultimo_error = f"{resp.status_code} - {resp.text[:200]}"
+                    errores_modelos.append(f"{mod}: {resp.status_code} - {resp.text[:150]}")
             except Exception as ex_m:
-                ultimo_error = str(ex_m)
+                errores_modelos.append(f"{mod}: {str(ex_m)}")
                 continue
 
         return {
             "success": False,
-            "error": f"Error conectando con Gemini Vision: {ultimo_error}"
+            "error": f"Error conectando con Gemini Vision: {' | '.join(errores_modelos)}"
         }
 
     except Exception as e:
