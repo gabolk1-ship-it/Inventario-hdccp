@@ -157,14 +157,87 @@
       color:#888;margin:16px 0 10px;display:flex;align-items:center;gap:6px}
     .slabel::after{content:'';flex:1;height:1px;background:#e0e0e0}
 
-    /* ── Responsive ── */
-    @media(max-width:600px){
-      .module-grid{grid-template-columns:1fr}
-      .foto-row{grid-template-columns:1fr}
+    /* ── Responsive — móvil primero ── */
+
+    /* Teléfonos pequeños y medianos (≤ 640px) */
+    @media(max-width:640px){
+      /* Layout general */
+      body{font-size:15px}
+      .page{padding:12px}
+
+      /* Header */
+      header{padding:10px 14px;flex-wrap:wrap;gap:8px}
+      .brand{font-size:16px}
+      .brand span{font-size:22px}
+      .nav-tabs{width:100%;justify-content:center}
+      .nav-tabs button{flex:1;font-size:13px;padding:9px 6px;border-radius:14px}
+      #sheet-count{display:none}
+
+      /* Cards */
+      .card{padding:16px 14px;border-radius:12px}
+      .card-header{font-size:14px}
+
+      /* Módulos */
+      .module-grid{grid-template-columns:1fr;gap:10px}
+      .module-card{padding:18px 14px}
+      .module-card .mc-icon{font-size:36px}
+      .module-card h3{font-size:15px}
+
+      /* Periférico chips: 2 columnas grandes */
+      .peri-grid{grid-template-columns:1fr 1fr;gap:10px}
+      .peri-chip{padding:16px 6px;font-size:13px;border-radius:14px}
+      .peri-chip .pi{font-size:32px;margin-bottom:6px}
+
+      /* Campos: 1 columna, inputs grandes */
       .fields-grid{grid-template-columns:1fr}
-      .fields-grid.cols3{grid-template-columns:1fr 1fr}
-      .peri-grid{grid-template-columns:repeat(2,1fr)}
-      .nav-tabs button{font-size:11px;padding:6px 10px}
+      .fields-grid.cols3{grid-template-columns:1fr}
+      .field-group input,
+      .field-group select{
+        padding:12px 13px;font-size:15px;border-radius:10px
+      }
+      .field-group label{font-size:12px}
+
+      /* Fotos: 1 columna, zonas grandes para toque */
+      .foto-row{grid-template-columns:1fr;gap:12px}
+      .foto-zone{min-height:150px;border-radius:14px;padding:18px}
+      .fz-icon{font-size:42px}
+      .fz-label{font-size:14px}
+      .fz-hint{font-size:12px}
+      .foto-zone img.fz-prev{height:160px}
+
+      /* BAT zone */
+      .bat-zone{padding:22px 14px}
+      .bat-zone .bat-icon{font-size:42px}
+      .bat-zone .bat-label{font-size:15px}
+
+      /* OCR box */
+      .ocr-box{padding:12px}
+      .ocr-text{font-size:12px;max-height:80px}
+      .ocr-btn{padding:6px 14px;font-size:12px}
+
+      /* Estado pills: más grandes */
+      .estado-pills{gap:8px}
+      .estado-pill{padding:12px 4px;font-size:14px;border-radius:12px}
+
+      /* Botón guardar: más grande y visible */
+      .btn-save{padding:17px;font-size:17px;border-radius:14px;margin-top:8px}
+
+      /* Inventario: scroll horizontal con fuente más pequeña */
+      .inv-hdr h2{font-size:17px}
+      .btn-ref{padding:8px 14px;font-size:13px}
+      table{font-size:11px}
+      thead th{padding:9px 7px}
+      tbody td{padding:7px}
+      .thumb{width:34px;height:34px}
+    }
+
+    /* Teléfonos muy pequeños (≤ 380px) */
+    @media(max-width:380px){
+      .nav-tabs button{font-size:12px;padding:8px 4px}
+      .peri-grid{grid-template-columns:1fr 1fr;gap:8px}
+      .peri-chip{padding:13px 4px;font-size:12px}
+      .peri-chip .pi{font-size:28px}
+      .btn-save{font-size:15px;padding:15px}
     }
   </style>
 </head>
