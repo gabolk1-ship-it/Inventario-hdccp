@@ -275,7 +275,7 @@
 <body>
 
 <header>
-  <div class="brand"><span>📦</span>Inventario IESS <span style="background:#34a853;color:white;font-size:10px;padding:2px 7px;border-radius:12px;margin-left:4px;font-weight:700">v3.3</span></div>
+  <div class="brand"><span>📦</span>Inventario IESS <span style="background:#34a853;color:white;font-size:10px;padding:2px 7px;border-radius:12px;margin-left:4px;font-weight:700">v3.4</span></div>
   <div class="nav-tabs">
     <button class="active" onclick="showPage('reg',this)">📝 Registrar</button>
     <button onclick="showPage('inv',this)">📋 Inventario</button>
@@ -338,9 +338,34 @@
       </div>
     </div>
 
+    <!-- Tipo de Computador -->
+    <div class="card">
+      <div class="card-header"><span class="ch-icon">🖥️</span>Tipo de Computador</div>
+      <div class="peri-grid">
+        <div class="peri-chip sel-mon" id="chip-c1-escritorio" onclick="selTipoC1('COMPUTADOR DE ESCRITORIO',this)">
+          <span class="pi">🖥️</span>CPU / Escritorio
+        </div>
+        <div class="peri-chip" id="chip-c1-aio" onclick="selTipoC1('COMPUTADOR TODO EN UNO',this)">
+          <span class="pi">🖥️</span>Todo en Uno (AIO)
+        </div>
+        <div class="peri-chip" id="chip-c1-portatil" onclick="selTipoC1('COMPUTADOR PORTÁTIL',this)">
+          <span class="pi">💻</span>Portátil / Laptop
+        </div>
+        <div class="peri-chip" id="chip-c1-servidor" onclick="selTipoC1('SERVIDOR',this)">
+          <span class="pi">🖧</span>Servidor
+        </div>
+      </div>
+      <input type="hidden" id="c1-tipo" value="COMPUTADOR DE ESCRITORIO">
+    </div>
+
     <!-- BAT -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">⚙️</span>Datos del Sistema (.bat)</div>
+      <div class="card-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px"><span class="ch-icon">⚙️</span>Datos del Sistema (.bat)</div>
+        <a href="/recopilar_info.bat" download style="display:inline-flex;align-items:center;gap:6px;background:#e8f0fe;color:#1a73e8;text-decoration:none;font-weight:700;font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid #bfdbfe">
+          📥 Descargar .bat para el PC
+        </a>
+      </div>
       <div class="bat-zone" id="bat-zone">
         <input type="file" id="bat-file" accept=".json,.txt" onchange="cargarBat()">
         <div class="bat-icon">📄</div>
@@ -350,10 +375,6 @@
       <div class="bat-ok" id="bat-ok">✅ Datos del sistema cargados correctamente</div>
       <div class="slabel" style="margin-top:14px">Datos extraídos (editables)</div>
       <div class="fields-grid cols3">
-        <div class="field-group full">
-          <label>Tipo de Equipo</label>
-          <input type="text" id="c1-tipo" placeholder="Ej: COMPUTADOR DE ESCRITORIO">
-        </div>
         <div class="field-group">
           <label>Marca</label>
           <input type="text" id="c1-marca" placeholder="Ej: HP">
@@ -409,14 +430,14 @@
 
     <!-- Fotos + OCR etiqueta -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">📷</span>Fotos (cámara)</div>
+      <div class="card-header"><span class="ch-icon">📷</span>Fotos del Equipo y Etiqueta</div>
       <div class="foto-row">
         <div class="foto-zone" id="c1-zone-eq">
           <input type="file" id="c1-foto-eq" accept="image/*" capture="environment"
                  onchange="prevFoto(this,'c1-prev-eq','c1-zone-eq','c1-icon-eq')">
           <img class="fz-prev" id="c1-prev-eq" alt="">
           <div class="fz-icon" id="c1-icon-eq">📷</div>
-          <div class="fz-label">Foto del Equipo</div>
+          <div class="fz-label" id="c1-lbl-foto-eq">Foto del Equipo / CPU</div>
           <div class="fz-hint">Toca para abrir la cámara</div>
         </div>
         <div class="foto-zone" id="c1-zone-et">
@@ -424,8 +445,8 @@
                  onchange="prevFoto(this,'c1-prev-et','c1-zone-et','c1-icon-et'); runOCR('c1')">
           <img class="fz-prev" id="c1-prev-et" alt="">
           <div class="fz-icon" id="c1-icon-et">🏷️</div>
-          <div class="fz-label">Etiqueta <span class="ocr-badge">OCR</span></div>
-          <div class="fz-hint">Auto-leerá Marca, Modelo, Serie</div>
+          <div class="fz-label" id="c1-lbl-foto-et">Etiqueta <span class="ocr-badge">OCR</span></div>
+          <div class="fz-hint" id="c1-hint-et">Auto-leerá Marca, Modelo, Serie, Cód. Bien</div>
         </div>
       </div>
       <div class="ocr-box">
@@ -439,21 +460,24 @@
         <div class="ocr-text" id="c1-ocr-text">Captura la etiqueta del equipo para análisis inteligente...</div>
         <div class="ocr-bar"><div class="ocr-fill" id="c1-ocr-fill"></div></div>
         <div class="ocr-st" id="c1-ocr-st"></div>
+
+        <div class="fields-grid" style="margin-top:14px;background:#f0f7ff;padding:12px;border-radius:12px;border:1.5px solid #bfdbfe">
+          <div class="field-group">
+            <label style="color:#1a73e8;font-weight:800">🏷️ Código del Bien IESS</label>
+            <input type="text" id="c1-codigo-bien" placeholder="Ej: IM-0511 C.C.Q.A.H.D." style="font-weight:700">
+          </div>
+          <div class="field-group">
+            <label style="color:#1a73e8;font-weight:800">🔢 Código Auxiliar / Barras</label>
+            <input type="text" id="c1-codigo-aux" placeholder="Ej: 27038980000661" style="font-weight:700">
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Identificación y estado -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">🏷️</span>Identificación y Estado</div>
+      <div class="card-header"><span class="ch-icon">🏷️</span>Datos Institucionales y Estado</div>
       <div class="fields-grid">
-        <div class="field-group">
-          <label>Código del Bien IESS</label>
-          <input type="text" id="c1-codigo-bien" placeholder="Ej: IM-0511 C.C.Q.A.H.D.">
-        </div>
-        <div class="field-group">
-          <label>Código Auxiliar</label>
-          <input type="text" id="c1-codigo-aux" placeholder="Ej: 27038980000661">
-        </div>
         <div class="field-group">
           <label>Proveedor</label>
           <input type="text" id="c1-proveedor" placeholder="Ej: N/A">
@@ -823,6 +847,26 @@ function custodioChanged(pfx) {
   }
 }
 
+/* ══ Tipo de Computador en Módulo 1 ══ */
+function selTipoC1(tipo, chip) {
+  document.getElementById('c1-tipo').value = tipo;
+  document.querySelectorAll('#mod-completo .peri-chip').forEach(c => c.className = 'peri-chip');
+  if (chip) chip.classList.add('sel-mon');
+  const lblFoto = document.getElementById('c1-lbl-foto-eq');
+  const hintEt = document.getElementById('c1-hint-et');
+  const t = tipo.toUpperCase();
+  if (t.includes('TODO') || t.includes('AIO') || t.includes('UNO')) {
+    if (lblFoto) lblFoto.textContent = 'Foto del Todo en Uno (AIO)';
+    if (hintEt) hintEt.textContent = 'Etiqueta suele estar detrás de la pantalla o base';
+  } else if (t.includes('PORT') || t.includes('LAP')) {
+    if (lblFoto) lblFoto.textContent = 'Foto de la Portátil / Laptop';
+    if (hintEt) hintEt.textContent = 'Etiqueta en la base inferior de la laptop';
+  } else {
+    if (lblFoto) lblFoto.textContent = 'Foto del CPU / Chasis';
+    if (hintEt) hintEt.textContent = 'Auto-leerá Marca, Modelo, Serie, Cód. Bien';
+  }
+}
+
 /* ══ Cargar BAT info.json ══ */
 function cargarBat() {
   const file = document.getElementById('bat-file').files[0];
@@ -832,7 +876,6 @@ function cargarBat() {
     try {
       const info = JSON.parse(e.target.result);
       const set = (id, val) => { if (val) document.getElementById(id).value = val; };
-      set('c1-tipo',      info.tipo || '');
       set('c1-marca',     info.marca || '');
       set('c1-modelo',    info.modelo || '');
       set('c1-serie',     info.serie || '');
@@ -844,10 +887,25 @@ function cargarBat() {
       set('c1-ip',        info.ip || '');
       set('c1-mac',       info.mac || '');
       set('c1-usuarios',  info.usuarios || '');
+      if (info.codigo_bien) set('c1-codigo-bien', info.codigo_bien);
+      if (info.codigo_auxiliar) set('c1-codigo-aux', info.codigo_auxiliar);
       if (info.disco_unidad) document.getElementById('c1-disco-uni').value = info.disco_unidad;
+
+      // Sincronizar tipo y chip visual
+      const tipo = (info.tipo || '').toUpperCase();
+      if (tipo.includes('TODO') || tipo.includes('AIO') || tipo.includes('UNO')) {
+        selTipoC1('COMPUTADOR TODO EN UNO', document.getElementById('chip-c1-aio'));
+      } else if (tipo.includes('PORT') || tipo.includes('LAP')) {
+        selTipoC1('COMPUTADOR PORTÁTIL', document.getElementById('chip-c1-portatil'));
+      } else if (tipo.includes('SERV')) {
+        selTipoC1('SERVIDOR', document.getElementById('chip-c1-servidor'));
+      } else {
+        selTipoC1('COMPUTADOR DE ESCRITORIO', document.getElementById('chip-c1-escritorio'));
+      }
+
       document.getElementById('bat-ok').style.display = 'block';
       document.getElementById('bat-zone').style.borderColor = '#34a853';
-      toast('✅ Datos del sistema cargados', 'ok');
+      toast('✅ Datos del sistema cargados correctamente', 'ok');
     } catch { toast('❌ El archivo no tiene formato válido', 'err'); }
   };
   reader.readAsText(file);
@@ -920,7 +978,16 @@ async function runOCR(pfx) {
       if (d.codigo_auxiliar) setCampoConIA(`${prefix}-codigo-aux`, d.codigo_auxiliar);
       if (pfx === 'c1') {
         if (d.mac) setCampoConIA('c1-mac', d.mac);
-        if (d.tipo && !document.getElementById('c1-tipo').value) setCampoConIA('c1-tipo', d.tipo);
+        if (d.tipo) {
+          const t = d.tipo.toUpperCase();
+          if (t.includes('TODO') || t.includes('AIO') || t.includes('UNO')) {
+            selTipoC1('COMPUTADOR TODO EN UNO', document.getElementById('chip-c1-aio'));
+          } else if (t.includes('PORT') || t.includes('LAP')) {
+            selTipoC1('COMPUTADOR PORTÁTIL', document.getElementById('chip-c1-portatil'));
+          } else if (t.includes('SERV')) {
+            selTipoC1('SERVIDOR', document.getElementById('chip-c1-servidor'));
+          }
+        }
       }
       toast('✨ Agente IA completó los datos automáticamente', 'ok');
       return;
@@ -961,6 +1028,14 @@ function setCampoConIA(id, val) {
 
 function parseOCR(pfx, texto) {
   const prefix = pfx === 'c1' ? 'c1' : 'p';
+  // Código del Bien IESS
+  const cb = texto.match(/\b(IM[\-\s]*\d{3,}[\w\s\.]*|EI[\-\s]*\d{3,})/i);
+  if (cb) autoSet(`${prefix}-codigo-bien`, cb[1].trim());
+
+  // Código Auxiliar o código de barras (10-14 dígitos)
+  const ca = texto.match(/\b(27\d{10,12})\b/);
+  if (ca) autoSet(`${prefix}-codigo-aux`, ca[1]);
+
   // Serie
   for (const p of [
     /(?:S\/N|SN|Serial\s*(?:No?)?|Serie)\s*[:\-]?\s*([A-Z0-9\-]{5,})/i,

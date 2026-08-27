@@ -70,19 +70,46 @@ for /f "tokens=2 delims=:" %%i in ('ipconfig ^| findstr /c:"IPv4"') do (
 )
 
 :: ── Tipo de equipo (Desktop / Laptop / AIO) ───────
-for /f "skip=1 tokens=*" %%i in ('wmic computersystem get PCSystemType') do (
+set "IS_AIO=0"
+for /f "skip=1 tokens=*" %%i in ('wmic csenclosure get ChassisTypes 2^>nul') do (
+    for %%c in (%%i) do (
+        if "%%c"=="13" set "IS_AIO=1"
+    )
+)
+echo !MODELO! | findstr /i "AIO All-in-One All_in_One ProOne OptiPlex.52 OptiPlex.74 TouchSmart IdeaCentre" >nul
+if !errorlevel! equ 0 set "IS_AIO=1"
+
+for /f "skip=1 tokens=*" %%i in ('wmic computersystem get PCSystemType 2^>nul') do (
     if not defined PCTYPE set "PCTYPE=%%i"
 )
-if "%PCTYPE%"=="1" set "TIPO=COMPUTADOR DE ESCRITORIO"
-if "%PCTYPE%"=="2" set "TIPO=COMPUTADOR PORTÁTIL"
-if "%PCTYPE%"=="3" set "TIPO=COMPUTADOR PORTÁTIL"
-if not defined TIPO set "TIPO=COMPUTADOR DE ESCRITORIO"
+
+if "!IS_AIO!"=="1" (
+    set "TIPO=COMPUTADOR TODO EN UNO"
+) else (
+    if "%PCTYPE%"=="1" set "TIPO=COMPUTADOR DE ESCRITORIO"
+    if "%PCTYPE%"=="2" set "TIPO=COMPUTADOR PORTÁTIL"
+    if "%PCTYPE%"=="3" set "TIPO=COMPUTADOR PORTÁTIL"
+    if not defined TIPO set "TIPO=COMPUTADOR DE ESCRITORIO"
+)
 
 :: ── Usuarios con perfil local ─────────────────────
 set "USUARIOS="
 for /f "skip=1 tokens=*" %%i in ('wmic useraccount where "LocalAccount=True and Disabled=False" get Name') do (
     if not defined USUARIOS (set "USUARIOS=%%i") else (set "USUARIOS=!USUARIOS!, %%i")
 )
+
+:: ── Datos opcionales de Etiqueta / Placa IESS ──────
+echo.
+echo ========================================================
+echo  IDENTIFICACION INSTITUCIONAL (PLACA / ETIQUETA IESS)
+echo ========================================================
+echo  Si el equipo tiene etiqueta o placa del IESS visible,
+echo  puedes digitarla ahora (o presiona ENTER para omitir):
+echo.
+set "COD_BIEN="
+set /p "COD_BIEN= Codigo del Bien IESS (ej: IM-0511): "
+set "COD_AUX="
+set /p "COD_AUX= Codigo Auxiliar / Barras (ej: 27038980000661): "
 
 :: ── Generar JSON ──────────────────────────────────
 set "OUTFILE=%~dp0info.json"
@@ -101,6 +128,8 @@ echo   "serie": "%SERIE%",
 echo   "mac": "%MAC%",
 echo   "ip": "%IP%",
 echo   "tipo": "%TIPO%",
+echo   "codigo_bien": "!COD_BIEN!",
+echo   "codigo_auxiliar": "!COD_AUX!",
 echo   "usuarios": "%USUARIOS%"
 echo }
 ) > "%OUTFILE%"

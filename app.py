@@ -233,6 +233,17 @@ def root():
     )
 
 
+@app.get("/recopilar_info.bat", include_in_schema=False)
+def download_bat():
+    bat_path = os.path.join(os.path.dirname(__file__), "recopilar_info.bat")
+    return FileResponse(
+        bat_path,
+        media_type="application/octet-stream",
+        filename="recopilar_info.bat",
+        headers={"Content-Disposition": 'attachment; filename="recopilar_info.bat"'}
+    )
+
+
 @app.post("/api/inventario")
 async def crear_registro(
     tipo:              str  = Form(...),
@@ -365,7 +376,7 @@ Reglas de extracción:
 - "marca": Marca del fabricante (HP, Dell, Lenovo, Logitech, Epson, Samsung, etc.).
 - "modelo": Modelo comercial o número de modelo exacto.
 - "serie": Número de serie, Serial Number, S/N, Service Tag o N/S. Cuidado crítico: no confundir O con 0, I con 1, 8 con B.
-- "tipo": Tipo de bien si es evidente (COMPUTADOR ESCRITORIO, PORTATIL, MONITOR, TECLADO, MOUSE, IMPRESORA).
+- "tipo": Tipo de bien si es evidente (COMPUTADOR DE ESCRITORIO, COMPUTADOR TODO EN UNO, COMPUTADOR PORTÁTIL, MONITOR, TECLADO, MOUSE, IMPRESORA). Si es All-in-One, pon "COMPUTADOR TODO EN UNO".
 - "mac": Dirección MAC física de red si está impresa (ej: 00:1A:2B:3C:4D:5E).
 - "texto_leido": Todo el texto relevante que logres transcribir de la etiqueta.
 """
