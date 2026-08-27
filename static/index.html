@@ -82,7 +82,7 @@
     .peri-chip.sel-imp{border-color:#ea4335;background:#fdf0ef;color:#b71c1c}
 
     /* ── Foto zones ── */
-    .foto-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .foto-row{display:grid;grid-template-columns:repeat(auto-fit, minmax(115px, 1fr));gap:10px}
     .foto-zone{border:2px dashed #c5cae9;border-radius:14px;padding:14px;text-align:center;
       cursor:pointer;position:relative;transition:border-color .2s,background .2s;min-height:130px;
       display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -214,13 +214,13 @@
       .field-group select{padding-right:34px;background-position:right 12px center}
       .field-group label{font-size:12px}
 
-      /* Fotos: 1 columna, zonas grandes para toque */
-      .foto-row{grid-template-columns:1fr;gap:12px}
-      .foto-zone{min-height:150px;border-radius:14px;padding:18px}
-      .fz-icon{font-size:42px}
-      .fz-label{font-size:14px}
-      .fz-hint{font-size:12px}
-      .foto-zone img.fz-prev{height:160px}
+      /* Fotos: 3 tarjetas responsivas */
+      .foto-row{grid-template-columns:repeat(auto-fit, minmax(105px, 1fr));gap:8px}
+      .foto-zone{min-height:125px;border-radius:12px;padding:12px 6px}
+      .fz-icon{font-size:32px}
+      .fz-label{font-size:12px;line-height:1.2}
+      .fz-hint{font-size:10px}
+      .foto-zone img.fz-prev{height:120px}
 
       /* BAT zone */
       .bat-zone{padding:22px 14px}
@@ -275,7 +275,7 @@
 <body>
 
 <header>
-  <div class="brand"><span>📦</span>Inventario IESS <span style="background:#34a853;color:white;font-size:10px;padding:2px 7px;border-radius:12px;margin-left:4px;font-weight:700">v3.5</span></div>
+  <div class="brand"><span>📦</span>Inventario IESS <span style="background:#34a853;color:white;font-size:10px;padding:2px 7px;border-radius:12px;margin-left:4px;font-weight:700">v3.6</span></div>
   <div class="nav-tabs">
     <button class="active" onclick="showPage('reg',this)">📝 Registrar</button>
     <button onclick="showPage('inv',this)">📋 Inventario</button>
@@ -430,7 +430,7 @@
 
     <!-- Fotos + OCR etiqueta -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">📷</span>Fotos del Equipo y Etiqueta</div>
+      <div class="card-header"><span class="ch-icon">📷</span>Fotos del Equipo y Etiquetas</div>
       <div class="foto-row">
         <div class="foto-zone" id="c1-zone-eq">
           <input type="file" id="c1-foto-eq" accept="image/*" capture="environment"
@@ -438,15 +438,23 @@
           <img class="fz-prev" id="c1-prev-eq" alt="">
           <div class="fz-icon" id="c1-icon-eq">📷</div>
           <div class="fz-label" id="c1-lbl-foto-eq">Foto del Equipo / CPU</div>
-          <div class="fz-hint">Toca para abrir la cámara</div>
+          <div class="fz-hint">Toca para abrir cámara</div>
         </div>
         <div class="foto-zone" id="c1-zone-et">
           <input type="file" id="c1-foto-et" accept="image/*" capture="environment"
-                 onchange="prevFoto(this,'c1-prev-et','c1-zone-et','c1-icon-et'); runOCR('c1')">
+                 onchange="prevFoto(this,'c1-prev-et','c1-zone-et','c1-icon-et'); runOCR('c1','bien')">
           <img class="fz-prev" id="c1-prev-et" alt="">
           <div class="fz-icon" id="c1-icon-et">🏷️</div>
-          <div class="fz-label" id="c1-lbl-foto-et">Etiqueta <span class="ocr-badge">OCR</span></div>
-          <div class="fz-hint" id="c1-hint-et">Auto-leerá Marca, Modelo, Serie, Cód. Bien</div>
+          <div class="fz-label" id="c1-lbl-foto-et">Placa / Bien IESS <span class="ocr-badge">OCR</span></div>
+          <div class="fz-hint" id="c1-hint-et">Código IM- / Placa</div>
+        </div>
+        <div class="foto-zone" id="c1-zone-aux">
+          <input type="file" id="c1-foto-aux" accept="image/*" capture="environment"
+                 onchange="prevFoto(this,'c1-prev-aux','c1-zone-aux','c1-icon-aux'); runOCR('c1','aux')">
+          <img class="fz-prev" id="c1-prev-aux" alt="">
+          <div class="fz-icon" id="c1-icon-aux">🔢</div>
+          <div class="fz-label" id="c1-lbl-foto-aux">Cód. Auxiliar <span class="ocr-badge">OCR</span></div>
+          <div class="fz-hint" id="c1-hint-aux">Etiqueta de barras</div>
         </div>
       </div>
       <div class="ocr-box">
@@ -454,20 +462,20 @@
           <span class="ocr-title" id="c1-ocr-title">🤖 Agente IA de Visión / OCR</span>
           <div style="display:flex;gap:6px">
             <button class="ocr-btn" onclick="abrirModalIA()" title="Configurar clave Gemini">⚙️ Clave IA</button>
-            <button class="ocr-btn" onclick="runOCR('c1')">🔄 Re-analizar</button>
+            <button class="ocr-btn" onclick="runOCR('c1','bien')">🔄 Re-analizar</button>
           </div>
         </div>
-        <div class="ocr-text" id="c1-ocr-text">Captura la etiqueta del equipo para análisis inteligente...</div>
+        <div class="ocr-text" id="c1-ocr-text">Toma foto de la Placa del Bien IESS o de la etiqueta de Código Auxiliar...</div>
         <div class="ocr-bar"><div class="ocr-fill" id="c1-ocr-fill"></div></div>
         <div class="ocr-st" id="c1-ocr-st"></div>
 
         <div class="fields-grid" style="margin-top:14px;background:#f0f7ff;padding:12px;border-radius:12px;border:1.5px solid #bfdbfe">
           <div class="field-group">
-            <label style="color:#1a73e8;font-weight:800">🏷️ Código del Bien IESS</label>
+            <label style="color:#1a73e8;font-weight:800">🏷️ Código del Bien IESS (Placa)</label>
             <input type="text" id="c1-codigo-bien" placeholder="Ej: IM-0511 C.C.Q.A.H.D." style="font-weight:700">
           </div>
           <div class="field-group">
-            <label style="color:#1a73e8;font-weight:800">🔢 Código Auxiliar / Barras</label>
+            <label style="color:#1a73e8;font-weight:800">🔢 Código Auxiliar (Etiqueta de Barras)</label>
             <input type="text" id="c1-codigo-aux" placeholder="Ej: 27038980000661" style="font-weight:700">
           </div>
         </div>
@@ -550,23 +558,31 @@
 
     <!-- Fotos + OCR -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">📷</span>Fotos del Periférico</div>
+      <div class="card-header"><span class="ch-icon">📷</span>Fotos del Periférico y Etiquetas</div>
       <div class="foto-row">
         <div class="foto-zone" id="p-zone-eq">
           <input type="file" id="p-foto-eq" accept="image/*" capture="environment"
                  onchange="prevFoto(this,'p-prev-eq','p-zone-eq','p-icon-eq')">
           <img class="fz-prev" id="p-prev-eq" alt="">
           <div class="fz-icon" id="p-icon-eq">📷</div>
-          <div class="fz-label">Foto del Periférico</div>
-          <div class="fz-hint">Toca para abrir la cámara</div>
+          <div class="fz-label">Foto General</div>
+          <div class="fz-hint">Toca para abrir cámara</div>
         </div>
         <div class="foto-zone" id="p-zone-et">
           <input type="file" id="p-foto-et" accept="image/*" capture="environment"
-                 onchange="prevFoto(this,'p-prev-et','p-zone-et','p-icon-et'); runOCR('p')">
+                 onchange="prevFoto(this,'p-prev-et','p-zone-et','p-icon-et'); runOCR('p','bien')">
           <img class="fz-prev" id="p-prev-et" alt="">
           <div class="fz-icon" id="p-icon-et">🏷️</div>
-          <div class="fz-label">Etiqueta <span class="ocr-badge">OCR</span></div>
-          <div class="fz-hint">Auto-leerá Marca, Modelo, Serie</div>
+          <div class="fz-label" id="p-lbl-foto-et">Placa / Bien IESS <span class="ocr-badge">OCR</span></div>
+          <div class="fz-hint" id="p-hint-et">Código EI- / IM- / Placa</div>
+        </div>
+        <div class="foto-zone" id="p-zone-aux">
+          <input type="file" id="p-foto-aux" accept="image/*" capture="environment"
+                 onchange="prevFoto(this,'p-prev-aux','p-zone-aux','p-icon-aux'); runOCR('p','aux')">
+          <img class="fz-prev" id="p-prev-aux" alt="">
+          <div class="fz-icon" id="p-icon-aux">🔢</div>
+          <div class="fz-label" id="p-lbl-foto-aux">Cód. Auxiliar <span class="ocr-badge">OCR</span></div>
+          <div class="fz-hint" id="p-hint-aux">Etiqueta de barras</div>
         </div>
       </div>
       <div class="ocr-box">
@@ -574,18 +590,29 @@
           <span class="ocr-title" id="p-ocr-title">🤖 Agente IA de Visión / OCR</span>
           <div style="display:flex;gap:6px">
             <button class="ocr-btn" onclick="abrirModalIA()" title="Configurar clave Gemini">⚙️ Clave IA</button>
-            <button class="ocr-btn" onclick="runOCR('p')">🔄 Re-analizar</button>
+            <button class="ocr-btn" onclick="runOCR('p','bien')">🔄 Re-analizar</button>
           </div>
         </div>
-        <div class="ocr-text" id="p-ocr-text">Captura la etiqueta del periférico para análisis inteligente...</div>
+        <div class="ocr-text" id="p-ocr-text">Toma foto de la Placa del Bien IESS o de la etiqueta de Código Auxiliar...</div>
         <div class="ocr-bar"><div class="ocr-fill" id="p-ocr-fill"></div></div>
         <div class="ocr-st" id="p-ocr-st"></div>
+
+        <div class="fields-grid" style="margin-top:14px;background:#f0f7ff;padding:12px;border-radius:12px;border:1.5px solid #bfdbfe">
+          <div class="field-group">
+            <label style="color:#1a73e8;font-weight:800">🏷️ Código del Bien IESS (Placa)</label>
+            <input type="text" id="p-codigo-bien" placeholder="Ej: EI-0141" style="font-weight:700">
+          </div>
+          <div class="field-group">
+            <label style="color:#1a73e8;font-weight:800">🔢 Código Auxiliar (Etiqueta de Barras)</label>
+            <input type="text" id="p-codigo-aux" placeholder="Ej: 27004610003867" style="font-weight:700">
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Datos del periférico -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">📝</span>Datos del Periférico</div>
+      <div class="card-header"><span class="ch-icon">📝</span>Datos Técnicos</div>
       <div class="fields-grid">
         <div class="field-group">
           <label>Marca</label>
@@ -598,14 +625,6 @@
         <div class="field-group">
           <label>Número de Serie</label>
           <input type="text" id="p-serie" placeholder="Detectado por OCR">
-        </div>
-        <div class="field-group">
-          <label>Código del Bien IESS</label>
-          <input type="text" id="p-codigo-bien" placeholder="Ej: EI-0141">
-        </div>
-        <div class="field-group">
-          <label>Código Auxiliar</label>
-          <input type="text" id="p-codigo-aux" placeholder="Ej: 27004610003867">
         </div>
         <div class="field-group">
           <label>Ciudad</label>
@@ -973,10 +992,15 @@ function prevFoto(input, prevId, zoneId, iconId) {
 }
 
 /* ══ OCR Inteligente con Agente IA (Gemini) y Fallback Tesseract ══ */
-async function runOCR(pfx) {
-  const etId  = pfx === 'c1' ? 'c1-foto-et' : 'p-foto-et';
-  const input = document.getElementById(etId);
-  if (!input.files.length) return;
+async function runOCR(pfx, modo = 'bien') {
+  let fileInputId;
+  if (modo === 'aux') {
+    fileInputId = pfx === 'c1' ? 'c1-foto-aux' : 'p-foto-aux';
+  } else {
+    fileInputId = pfx === 'c1' ? 'c1-foto-et' : 'p-foto-et';
+  }
+  const input = document.getElementById(fileInputId);
+  if (!input || !input.files.length) return;
   const file = input.files[0];
   const prefix = pfx === 'c1' ? 'c1' : 'p';
   const txt  = document.getElementById(`${prefix}-ocr-text`);
@@ -984,7 +1008,9 @@ async function runOCR(pfx) {
   const st   = document.getElementById(`${prefix}-ocr-st`);
 
   fill.style.width = '25%';
-  txt.textContent = '🤖 Agente IA analizando foto de la etiqueta...';
+  txt.textContent = modo === 'aux'
+    ? '🤖 Agente IA leyendo etiqueta de Código Auxiliar / Barras...'
+    : '🤖 Agente IA analizando placa / etiqueta del Bien IESS...';
   st.textContent   = 'Optimizando y enviando imagen a Gemini...';
 
   // 1. Intentar con Agente IA en Backend
@@ -994,6 +1020,7 @@ async function runOCR(pfx) {
     formData.append('imagen', compFile);
     const tipoVal = pfx === 'c1' ? (document.getElementById('c1-tipo')?.value || 'COMPUTADOR') : (periActivo || 'PERIFÉRICO');
     formData.append('tipo_bien', tipoVal);
+    formData.append('modo_etiqueta', modo);
     const localKey = localStorage.getItem('gemini_api_key') || '';
     if (localKey) formData.append('gemini_key', localKey);
 
@@ -1189,8 +1216,10 @@ async function guardar(mod) {
       fd.append('ocr_raw',           document.getElementById('c1-ocr-text')?.textContent || '');
 
       const fe = document.getElementById('c1-foto-et').files[0];
+      const fa = document.getElementById('c1-foto-aux')?.files[0];
       const fq = document.getElementById('c1-foto-eq').files[0];
       if (fe) fd.append('foto_etiqueta', await comprimirImagen(fe));
+      if (fa) fd.append('foto_auxiliar', await comprimirImagen(fa));
       if (fq) fd.append('foto_equipo',   await comprimirImagen(fq));
 
     } else {
@@ -1219,8 +1248,10 @@ async function guardar(mod) {
       if (eqRec.fila) fd.append('fila', eqRec.fila);
 
       const fe = document.getElementById('p-foto-et').files[0];
+      const fa = document.getElementById('p-foto-aux')?.files[0];
       const fq = document.getElementById('p-foto-eq').files[0];
       if (fe) fd.append('foto_etiqueta', await comprimirImagen(fe));
+      if (fa) fd.append('foto_auxiliar', await comprimirImagen(fa));
       if (fq) fd.append('foto_equipo',   await comprimirImagen(fq));
     }
 

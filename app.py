@@ -307,12 +307,18 @@ async def crear_registro(
     ocr_raw:           str  = Form(""),
     fila:              Optional[int] = Form(None),
     foto_etiqueta: Optional[UploadFile] = File(None),
+    foto_auxiliar: Optional[UploadFile] = File(None),
     foto_equipo:   Optional[UploadFile] = File(None),
 ):
     # Subir imágenes a Google Drive
     url_etiqueta = await procesar_imagen(foto_etiqueta)
+    url_auxiliar = await procesar_imagen(foto_auxiliar)
     url_equipo   = await procesar_imagen(foto_equipo)
     id_unico     = str(uuid.uuid4())
+
+    # Combinar URLs de fotos de etiquetas si ambas existen
+    urls_et = [u for u in [url_etiqueta, url_auxiliar] if u]
+    foto_etiqueta_final = "\n".join(urls_et) if urls_et else ""
 
     data = dict(
         id_unico=id_unico, codigo_bien=codigo_bien, codigo_auxiliar=codigo_auxiliar,
@@ -322,7 +328,7 @@ async def crear_registro(
         cedula_custodio=cedula_custodio, responsable=responsable,
         ip=ip, mac=mac, hostname=hostname, estado=estado,
         foto_equipo=url_equipo or "",
-        foto_etiqueta=url_etiqueta or "",
+        foto_etiqueta=foto_etiqueta_final,
         ocr_raw=ocr_raw,
         fila=fila,
     )
@@ -338,6 +344,7 @@ async def crear_registro(
         "id_unico": id_unico,
         "foto_equipo": url_equipo,
         "foto_etiqueta": url_etiqueta,
+        "foto_auxiliar": url_auxiliar,
         "message": msg
     }
 
@@ -388,11 +395,12 @@ def test_conexion():
 async def ia_ocr(
     imagen: UploadFile = File(...),
     tipo_bien: Optional[str] = Form(None),
-    gemini_key: Optional[str] = Form(None)
+    gemini_key: Optional[str] = Form(None),
+    modo_etiqueta: Optional[str] = Form(None)
 ):
     """
     Agente inteligente de reconocimiento visual de etiquetas técnicas IESS.
-    Utiliza Gemini 2.0 Flash / 1.5 Flash para extraer Código IESS, Código Auxiliar,
+    Utiliza Gemini 3.5 Flash para extraer Código IESS, Código Auxiliar,
     Marca, Modelo, Número de Serie, MAC y Tipo de bien con alta precisión.
     """
     import requests
@@ -409,9 +417,21 @@ async def ia_ocr(
         b64_img = base64.b64encode(contenido).decode("utf-8")
         mime = imagen.content_type or "image/jpeg"
 
+        guia_modo = ""
+        if modo_etiqueta == "aux":
+            guia_modo = """
+ATENCIÓN PRIORITARIA: Esta imagen es específicamente de la ETIQUETA DEL CÓDIGO AUXILIAR / CÓDIGO DE BARRAS.
+Busca y extrae prioritariamente la secuencia numérica de 10 a 14 dígitos (por ejemplo: 27038980000661, 27004610003867, etc.) y asígnala al campo "codigo_auxiliar".
+"""
+        elif modo_etiqueta == "bien":
+            guia_modo = """
+ATENCIÓN PRIORITARIA: Esta imagen es de la PLACA / ETIQUETA INSTITUCIONAL DEL CÓDIGO DEL BIEN IESS.
+Busca y extrae prioritariamente el código del bien (ej: IM-0511, EI-0141, etc.) y colócalo en "codigo_bien". Si aparecen marca, modelo o serie, extráelos.
+"""
+
         prompt = f"""Eres un perito técnico experto en inventario de TI y activos fijos del IESS (Instituto Ecuatoriano de Seguridad Social).
 Analiza detalladamente esta fotografía de una etiqueta técnica, código de barras, placa de activo fijo o chasis ({tipo_bien or 'equipo informático / periférico'}).
-
+{guia_modo}
 Tu objetivo es leer y estructurar con extrema exactitud los identificadores técnicos.
 Responde ÚNICAMENTE un JSON válido sin texto adicional con esta estructura exacta:
 {{
