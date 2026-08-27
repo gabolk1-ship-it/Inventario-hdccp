@@ -316,6 +316,19 @@ def test_conexion():
             resultado["creds_json_ok"]  = False
             resultado["json_error"]     = str(e)
     resultado["gemini_key_presente"] = bool(os.environ.get("GEMINI_API_KEY"))
+    gem_key = os.environ.get("GEMINI_API_KEY", "")
+    if gem_key:
+        try:
+            import requests
+            r_mod = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={gem_key.strip()}", timeout=8)
+            if r_mod.status_code == 200:
+                models_list = [m.get("name") for m in r_mod.json().get("models", []) if "generateContent" in m.get("supportedGenerationMethods", [])]
+                resultado["gemini_modelos_disponibles"] = models_list
+            else:
+                resultado["gemini_error"] = f"{r_mod.status_code} - {r_mod.text[:200]}"
+        except Exception as ex_g:
+            resultado["gemini_error"] = str(ex_g)
+
     # 2 — ¿Puede conectar con Sheets?
     try:
         ws = get_sheet()
