@@ -10,18 +10,18 @@
       background:#f8fafc;color:#0f172a;min-height:100vh;-webkit-font-smoothing:antialiased}
 
     /* ── Header ── */
-    header{background:linear-gradient(135deg,#000d44,#001460);color:white;padding:10px 20px;
+    header{background:#020266;color:white;padding:8px 20px;
       display:flex;align-items:center;justify-content:space-between;
-      position:sticky;top:0;z-index:200;box-shadow:0 2px 14px rgba(0,0,0,.35)}
+      position:sticky;top:0;z-index:200;box-shadow:0 2px 14px rgba(2,2,102,.4)}
     .brand{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
-    .banner-iess{height:44px;max-width:100%;object-fit:contain;border-radius:6px;display:block}
-    .badge-v{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:white;font-size:10px;padding:2px 8px;border-radius:12px;font-weight:600;margin-left:4px;align-self:flex-start}
-    .nav-tabs{display:flex;gap:4px;background:rgba(255,255,255,.1);padding:3px;border-radius:24px;border:1px solid rgba(255,255,255,.15)}
+    .banner-iess{height:46px;max-width:100%;object-fit:contain;display:block}
+    .badge-v{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:white;font-size:10px;padding:2px 8px;border-radius:12px;font-weight:600;margin-left:4px;align-self:flex-start}
+    .nav-tabs{display:flex;gap:4px;background:rgba(255,255,255,.12);padding:3px;border-radius:24px;border:1px solid rgba(255,255,255,.2)}
     .nav-tabs button{background:transparent;border:none;color:#e2e8f0;
       padding:7px 20px;border-radius:20px;font-size:13px;font-weight:600;letter-spacing:.2px;
       cursor:pointer;transition:all .2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-    .nav-tabs button:hover{color:white;background:rgba(255,255,255,.08)}
-    .nav-tabs button.active{background:white;color:#001460;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.22)}
+    .nav-tabs button:hover{color:white;background:rgba(255,255,255,.12)}
+    .nav-tabs button.active{background:white;color:#020266;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.25)}
 
     /* ── Pages ── */
     .page{display:none;padding:22px 16px;max-width:880px;margin:0 auto}
@@ -268,7 +268,7 @@
 <header>
   <div class="brand">
     <img src="/iess-blue.jpeg" alt="IESS Hospital del Día Cotocollao" class="banner-iess">
-    <span class="badge-v">v3.9</span>
+    <span class="badge-v">v4.0</span>
   </div>
   <div class="nav-tabs">
     <button class="active" onclick="showPage('reg',this)">Registrar</button>
