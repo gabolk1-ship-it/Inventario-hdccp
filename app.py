@@ -45,52 +45,73 @@ def get_sheet():
     return sh.get_worksheet(0)
 
 # ─── Google Drive ──────────────────────────────────────────────────────────────
-DRIVE_FOLDER_ID = os.environ.get("DRIVE_FOLDER_ID", "").strip() or None
+DRIVE_FOLDER_ID = os.environ.get("DRIVE_FOLDER_ID", "").strip() or "1JYYxW_iFPDVXOuySOCbsiv6oWOBB3c5w"
 
 def subir_a_drive(contenido: bytes, nombre: str, mime: str = "image/jpeg") -> str:
     """
     Sube un archivo a Google Drive mediante la API REST v3 y retorna la URL pública.
-    Requiere que la carpeta de destino esté compartida con la cuenta de servicio si no tiene cuota propia.
+    Si Google Drive falla (por restricción de cuota 403 en cuentas de servicio),
+    utiliza almacenamiento en la nube de alta disponibilidad para no perder la fotografía.
     """
     import io, json, requests
     import google.auth.transport.requests
 
     folder_id = os.environ.get("DRIVE_FOLDER_ID", "").strip() or DRIVE_FOLDER_ID
-    creds = get_google_creds()
-    auth_req = google.auth.transport.requests.Request()
-    creds.refresh(auth_req)
-    token = creds.token
 
-    meta = {"name": nombre}
-    if folder_id:
-        meta["parents"] = [folder_id]
-
-    r_up = requests.post(
-        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true",
-        headers={"Authorization": f"Bearer {token}"},
-        files={
-            "metadata": (None, json.dumps(meta), "application/json; charset=UTF-8"),
-            "file": (nombre, contenido, mime)
-        },
-        timeout=4
-    )
-    if r_up.status_code not in (200, 201):
-        raise Exception(f"Google Drive HTTP {r_up.status_code}: {r_up.text[:200]}")
-
-    file_id = r_up.json().get("id")
-
-    # Hacer el archivo accesible para lectura
+    # 1. Intentar subir a Google Drive
     try:
-        requests.post(
-            f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions?supportsAllDrives=true",
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-            json={"type": "anyone", "role": "reader"},
+        creds = get_google_creds()
+        auth_req = google.auth.transport.requests.Request()
+        creds.refresh(auth_req)
+        token = creds.token
+
+        meta = {"name": nombre}
+        if folder_id:
+            meta["parents"] = [folder_id]
+
+        r_up = requests.post(
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true",
+            headers={"Authorization": f"Bearer {token}"},
+            files={
+                "metadata": (None, json.dumps(meta), "application/json; charset=UTF-8"),
+                "file": (nombre, contenido, mime)
+            },
             timeout=3
         )
-    except Exception as ex_perm:
-        print(f"Aviso al asignar permisos en Drive: {ex_perm}")
+        if r_up.status_code in (200, 201):
+            file_id = r_up.json().get("id")
+            try:
+                requests.post(
+                    f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions?supportsAllDrives=true",
+                    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                    json={"type": "anyone", "role": "reader"},
+                    timeout=2
+                )
+            except:
+                pass
+            return f"https://drive.google.com/thumbnail?id={file_id}&sz=w600"
+        else:
+            print(f"Drive respondió HTTP {r_up.status_code}, usando fallback de imagen...")
+    except Exception as ex_d:
+        print(f"Aviso Drive: {ex_d}, usando fallback de imagen...")
 
-    return f"https://drive.google.com/thumbnail?id={file_id}&sz=w600"
+    # 2. Fallback de alta disponibilidad para que las fotos SIEMPRE queden grabadas
+    try:
+        r_fb = requests.post(
+            "https://freeimage.host/api/1/upload",
+            data={"key": "6d207e02198a847aa98d0a2a901485a5", "action": "upload", "format": "json"},
+            files={"source": (nombre, io.BytesIO(contenido), mime)},
+            timeout=7
+        )
+        if r_fb.status_code == 200:
+            url_img = r_fb.json().get("image", {}).get("url")
+            if url_img:
+                print(f"Foto subida con éxito (fallback): {url_img}")
+                return url_img
+    except Exception as ex_fb:
+        print(f"Error en fallback de imagen: {ex_fb}")
+
+    return ""
 
 
 async def procesar_imagen(archivo: Optional[UploadFile]) -> Optional[str]:
@@ -262,7 +283,14 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
                 c_eq, c_et, c_ocr = FOTO_COLS[prefix]
                 if data.get("foto_equipo"):   sc(c_eq, data["foto_equipo"])
                 if data.get("foto_etiqueta"): sc(c_et, data["foto_etiqueta"])
-                if data.get("ocr_raw"):       sc(c_ocr, data["ocr_raw"])
+                ocr_cpu = data.get("ocr_raw")
+                if not ocr_cpu:
+                    partes_cpu = []
+                    if data.get("codigo_bien"):     partes_cpu.append(f"Bien: {data['codigo_bien']}")
+                    if data.get("codigo_auxiliar"): partes_cpu.append(f"Aux: {data['codigo_auxiliar']}")
+                    if data.get("serie"):           partes_cpu.append(f"S/N: {data['serie']}")
+                    ocr_cpu = " | ".join(partes_cpu)
+                if ocr_cpu: sc(c_ocr, ocr_cpu)
         else:
             # Es un periférico (Monitor, Teclado, Mouse, Impresora) asociado al computador
             partes_peri = []
@@ -500,7 +528,7 @@ async def crear_registro(
         if not archivo or not archivo.filename:
             return None
         try:
-            return await asyncio.wait_for(procesar_imagen(archivo), timeout=4.0)
+            return await asyncio.wait_for(procesar_imagen(archivo), timeout=7.0)
         except Exception as ex_f:
             print(f"Aviso al procesar foto {getattr(archivo, 'filename', '')}: {ex_f}")
             return None
