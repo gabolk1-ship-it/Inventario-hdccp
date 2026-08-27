@@ -275,7 +275,7 @@
 <body>
 
 <header>
-  <div class="brand"><span>📦</span>Inventario IESS <span style="background:#34a853;color:white;font-size:10px;padding:2px 7px;border-radius:12px;margin-left:4px;font-weight:700">v3.4</span></div>
+  <div class="brand"><span>📦</span>Inventario IESS <span style="background:#34a853;color:white;font-size:10px;padding:2px 7px;border-radius:12px;margin-left:4px;font-weight:700">v3.5</span></div>
   <div class="nav-tabs">
     <button class="active" onclick="showPage('reg',this)">📝 Registrar</button>
     <button onclick="showPage('inv',this)">📋 Inventario</button>
@@ -496,7 +496,7 @@
       <input type="hidden" id="c1-estado" value="Bueno">
     </div>
 
-    <button class="btn-save" onclick="guardar('completo')">💾 Guardar en Google Sheets</button>
+    <button class="btn-save" onclick="guardar('completo')">💾 Guardar Computador / CPU en Google Sheets</button>
   </div>
 
   <!-- ════ MÓDULO 2: PERIFÉRICO ════ -->
@@ -525,10 +525,13 @@
       </div>
     </div>
 
-    <!-- Tipo de periférico -->
+    <!-- Tipo de componente o periférico -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">🔌</span>Tipo de Periférico</div>
+      <div class="card-header"><span class="ch-icon">🔌</span>Elemento a Registrar / Complementar</div>
       <div class="peri-grid">
+        <div class="peri-chip" id="chip-cpu" onclick="selPeri('CPU',this)">
+          <span class="pi">🖥️</span>CPU / Chasis
+        </div>
         <div class="peri-chip" id="chip-monitor" onclick="selPeri('MONITOR',this)">
           <span class="pi">🖥️</span>Monitor
         </div>
@@ -618,7 +621,7 @@
       <input type="hidden" id="p-estado" value="Bueno">
     </div>
 
-    <button class="btn-save" onclick="guardar('periferico')">💾 Guardar Periférico en Sheets</button>
+    <button class="btn-save" id="btn-save-peri" onclick="guardar('periferico')">💾 Guardar Componente / CPU en Google Sheets</button>
   </div>
 </div>
 
@@ -911,6 +914,51 @@ function cargarBat() {
   reader.readAsText(file);
 }
 
+/* ══ Compresor de Imágenes en el Navegador (Evita error 413 Payload Too Large) ══ */
+async function comprimirImagen(file, maxDim = 1280, calidad = 0.75) {
+  if (!file || !file.type || !file.type.startsWith('image/')) return file;
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) { resolve(file); return; }
+            const compressed = new File([blob], (file.name || 'foto.jpg').replace(/\.[^.]+$/, '.jpg'), {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(compressed);
+          },
+          'image/jpeg',
+          calidad
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 /* ══ Foto preview ══ */
 function prevFoto(input, prevId, zoneId, iconId) {
   const file = input.files[0]; if (!file) return;
@@ -937,12 +985,13 @@ async function runOCR(pfx) {
 
   fill.style.width = '25%';
   txt.textContent = '🤖 Agente IA analizando foto de la etiqueta...';
-  st.textContent   = 'Enviando imagen a Gemini Vision...';
+  st.textContent   = 'Optimizando y enviando imagen a Gemini...';
 
   // 1. Intentar con Agente IA en Backend
   try {
+    const compFile = await comprimirImagen(file, 1280, 0.75);
     const formData = new FormData();
-    formData.append('imagen', file);
+    formData.append('imagen', compFile);
     const tipoVal = pfx === 'c1' ? (document.getElementById('c1-tipo')?.value || 'COMPUTADOR') : (periActivo || 'PERIFÉRICO');
     formData.append('tipo_bien', tipoVal);
     const localKey = localStorage.getItem('gemini_api_key') || '';
@@ -1068,15 +1117,27 @@ function autoSet(id, val) {
   if (el && !el.value.trim()) { el.value = val; el.classList.add('auto'); }
 }
 
-/* ══ Periférico tipo ══ */
+/* ══ Periférico / Componente tipo ══ */
 let periActivo = '';
-const periClases = {MONITOR:'sel-mon',MOUSE:'sel-mou',TECLADO:'sel-tec',IMPRESORA:'sel-imp'};
-const periIds    = {MONITOR:'chip-monitor',MOUSE:'chip-mouse',TECLADO:'chip-teclado',IMPRESORA:'chip-impresora'};
+const periClases = {CPU:'sel-mon',MONITOR:'sel-mon',MOUSE:'sel-mou',TECLADO:'sel-tec',IMPRESORA:'sel-imp'};
+const periIds    = {CPU:'chip-cpu',MONITOR:'chip-monitor',MOUSE:'chip-mouse',TECLADO:'chip-teclado',IMPRESORA:'chip-impresora'};
+const periLabels = {
+  CPU:       '💾 Guardar CPU en Google Sheets',
+  MONITOR:   '💾 Guardar Monitor en Google Sheets',
+  MOUSE:     '💾 Guardar Mouse en Google Sheets',
+  TECLADO:   '💾 Guardar Teclado en Google Sheets',
+  IMPRESORA: '💾 Guardar Impresora en Google Sheets'
+};
+
 function selPeri(tipo, chip) {
   periActivo = tipo;
   document.getElementById('p-tipo').value = tipo;
-  document.querySelectorAll('.peri-chip').forEach(c => c.className = 'peri-chip');
-  chip.classList.add(periClases[tipo] || '');
+  document.querySelectorAll('#mod-periferico .peri-chip').forEach(c => c.className = 'peri-chip');
+  chip.classList.add(periClases[tipo] || 'sel-mon');
+  const btnSave = document.getElementById('btn-save-peri');
+  if (btnSave && periLabels[tipo]) {
+    btnSave.innerHTML = periLabels[tipo];
+  }
 }
 
 /* ══ Estado pills ══ */
@@ -1088,75 +1149,101 @@ function selEstado(pfx, val, pill) {
   document.getElementById(`${pfx}-estado`).value = val;
 }
 
-/* ══ Guardar ══ */
+/* ══ Guardar en Google Sheets ══ */
 async function guardar(mod) {
-  const fd = new FormData();
-
-  if (mod === 'completo') {
-    const g = id => document.getElementById(id)?.value || '';
-    const custVal = g('c1-custodio');
-    const [cedula, responsable] = custVal.split('|');
-    fd.append('tipo',              g('c1-tipo') || 'COMPUTADOR DE ESCRITORIO');
-    fd.append('marca',             g('c1-marca'));
-    fd.append('modelo',            g('c1-modelo'));
-    fd.append('serie',             g('c1-serie'));
-    fd.append('sistema_operativo', g('c1-so'));
-    fd.append('ram',               g('c1-ram'));
-    fd.append('procesador',        g('c1-cpu'));
-    fd.append('disco_tam',         g('c1-disco-tam'));
-    fd.append('disco_unidad',      g('c1-disco-uni'));
-    fd.append('hostname',          g('c1-hostname'));
-    fd.append('ip',                g('c1-ip'));
-    fd.append('mac',               g('c1-mac'));
-    fd.append('cedula_custodio',   cedula || '');
-    fd.append('responsable',       responsable || '');
-    fd.append('dependencia',       g('c1-dependencia'));
-    fd.append('ubicacion',         g('c1-ubicacion'));
-    fd.append('codigo_bien',       g('c1-codigo-bien'));
-    fd.append('codigo_auxiliar',   g('c1-codigo-aux'));
-    fd.append('proveedor',         g('c1-proveedor'));
-    fd.append('ciudad',            g('c1-ciudad'));
-    fd.append('estado',            g('c1-estado'));
-    fd.append('ocr_raw',           document.getElementById('c1-ocr-text')?.textContent || '');
-    const fe = document.getElementById('c1-foto-et').files[0];
-    const fq = document.getElementById('c1-foto-eq').files[0];
-    if (fe) fd.append('foto_etiqueta', fe);
-    if (fq) fd.append('foto_equipo',   fq);
-
-  } else {
-    if (!periActivo) { toast('Selecciona el tipo de periférico','err'); return; }
-    const g = id => document.getElementById(id)?.value || '';
-    const eqIdx = +document.getElementById('p-equipo').value;
-    const eqRec = sheetData[eqIdx] || {};
-    fd.append('tipo',            periActivo);
-    fd.append('marca',           g('p-marca'));
-    fd.append('modelo',          g('p-modelo'));
-    fd.append('serie',           g('p-serie'));
-    fd.append('dependencia',     eqRec.dependencia || '');
-    fd.append('ubicacion',       eqRec.ubicacion   || '');
-    fd.append('responsable',     eqRec.responsable || '');
-    fd.append('cedula_custodio', eqRec.cedula      || '');
-    fd.append('codigo_bien',     g('p-codigo-bien'));
-    fd.append('codigo_auxiliar', g('p-codigo-aux'));
-    fd.append('ciudad',          g('p-ciudad'));
-    fd.append('estado',          g('p-estado'));
-    fd.append('ocr_raw',         document.getElementById('p-ocr-text')?.textContent || '');
-    const fe = document.getElementById('p-foto-et').files[0];
-    const fq = document.getElementById('p-foto-eq').files[0];
-    if (fe) fd.append('foto_etiqueta', fe);
-    if (fq) fd.append('foto_equipo',   fq);
+  const btn = document.querySelector(mod === 'completo' ? '#mod-completo .btn-save' : '#btn-save-peri');
+  const btnOriginal = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Optimizando y guardando...';
   }
 
   try {
-    const res  = await fetch(`${API}/api/inventario`, {method:'POST', body:fd});
-    const json = await res.json();
-    if (res.ok) {
-      toast(json.message || '✅ Guardado correctamente', 'ok');
-      await cargarSheetData();  // refresca listas
+    const fd = new FormData();
+
+    if (mod === 'completo') {
+      const g = id => document.getElementById(id)?.value || '';
+      const custVal = g('c1-custodio');
+      const [cedula, responsable] = custVal.split('|');
+      fd.append('tipo',              g('c1-tipo') || 'COMPUTADOR DE ESCRITORIO');
+      fd.append('marca',             g('c1-marca'));
+      fd.append('modelo',            g('c1-modelo'));
+      fd.append('serie',             g('c1-serie'));
+      fd.append('sistema_operativo', g('c1-so'));
+      fd.append('ram',               g('c1-ram'));
+      fd.append('procesador',        g('c1-cpu'));
+      fd.append('disco_tam',         g('c1-disco-tam'));
+      fd.append('disco_unidad',      g('c1-disco-uni'));
+      fd.append('hostname',          g('c1-hostname'));
+      fd.append('ip',                g('c1-ip'));
+      fd.append('mac',               g('c1-mac'));
+      fd.append('cedula_custodio',   cedula || '');
+      fd.append('responsable',       responsable || '');
+      fd.append('dependencia',       g('c1-dependencia'));
+      fd.append('ubicacion',         g('c1-ubicacion'));
+      fd.append('codigo_bien',       g('c1-codigo-bien'));
+      fd.append('codigo_auxiliar',   g('c1-codigo-aux'));
+      fd.append('proveedor',         g('c1-proveedor'));
+      fd.append('ciudad',            g('c1-ciudad'));
+      fd.append('estado',            g('c1-estado'));
+      fd.append('ocr_raw',           document.getElementById('c1-ocr-text')?.textContent || '');
+
+      const fe = document.getElementById('c1-foto-et').files[0];
+      const fq = document.getElementById('c1-foto-eq').files[0];
+      if (fe) fd.append('foto_etiqueta', await comprimirImagen(fe));
+      if (fq) fd.append('foto_equipo',   await comprimirImagen(fq));
+
     } else {
-      toast('❌ Error: '+(json.detail||'desconocido'), 'err');
+      if (!periActivo) {
+        toast('⚠️ Selecciona qué elemento vas a registrar (CPU, Monitor, etc.)', 'err');
+        if (btn) { btn.disabled = false; btn.innerHTML = btnOriginal; }
+        return;
+      }
+      const g = id => document.getElementById(id)?.value || '';
+      const eqIdx = document.getElementById('p-equipo').value;
+      const eqRec = (eqIdx !== '' && sheetData[+eqIdx]) ? sheetData[+eqIdx] : {};
+
+      fd.append('tipo',            periActivo);
+      fd.append('marca',           g('p-marca'));
+      fd.append('modelo',          g('p-modelo'));
+      fd.append('serie',           g('p-serie'));
+      fd.append('dependencia',     eqRec.dependencia || '');
+      fd.append('ubicacion',       eqRec.ubicacion   || '');
+      fd.append('responsable',     eqRec.responsable || '');
+      fd.append('cedula_custodio', eqRec.cedula      || '');
+      fd.append('codigo_bien',     g('p-codigo-bien'));
+      fd.append('codigo_auxiliar', g('p-codigo-aux'));
+      fd.append('ciudad',          g('p-ciudad'));
+      fd.append('estado',          g('p-estado'));
+      fd.append('ocr_raw',         document.getElementById('p-ocr-text')?.textContent || '');
+      if (eqRec.fila) fd.append('fila', eqRec.fila);
+
+      const fe = document.getElementById('p-foto-et').files[0];
+      const fq = document.getElementById('p-foto-eq').files[0];
+      if (fe) fd.append('foto_etiqueta', await comprimirImagen(fe));
+      if (fq) fd.append('foto_equipo',   await comprimirImagen(fq));
     }
-  } catch { toast('❌ Sin conexión con el servidor','err'); }
+
+    const res  = await fetch(`${API}/api/inventario`, {method:'POST', body:fd});
+    const json = await res.json().catch(() => null);
+    if (res.ok && json) {
+      toast(json.message || '✅ Guardado correctamente en Google Sheets', 'ok');
+      await cargarSheetData();  // refresca listas
+    } else if (res.status === 413) {
+      toast('❌ Las fotos exceden el tamaño máximo permitido por el servidor.', 'err');
+    } else {
+      const errDetail = (json && (json.detail || json.message)) || `Error del servidor (HTTP ${res.status})`;
+      toast('❌ ' + errDetail, 'err');
+    }
+  } catch(err) {
+    console.error('Error al guardar:', err);
+    toast('❌ Error de conexión: ' + (err.message || 'Intente nuevamente'), 'err');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = btnOriginal;
+    }
+  }
 }
 
 /* ══ Inventario ══ */

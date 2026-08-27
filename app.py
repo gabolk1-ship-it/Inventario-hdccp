@@ -119,7 +119,38 @@ FOTO_COLS = {
 def escribir_sheets(data: dict) -> None:
     ws      = get_sheet()
     headers = ws.row_values(1)
-    fila    = [""] * len(headers)
+    fila_num = data.get("fila")
+
+    # Si se especificó una fila existente (> 1), actualizamos esa fila sin borrar datos
+    if fila_num and isinstance(fila_num, int) and fila_num > 1:
+        valores_actuales = ws.row_values(fila_num)
+        fila = list(valores_actuales) + [""] * max(0, len(headers) - len(valores_actuales))
+
+        def sc(col, val):
+            i = col_idx(headers, col)
+            if i is not None and val:
+                fila[i] = str(val)
+
+        if data.get("codigo_bien"):     sc("Código del bien IESS", data["codigo_bien"])
+        if data.get("codigo_auxiliar"): sc("Código Auxiliar (Unnamed: 1)", data["codigo_auxiliar"])
+        if data.get("marca"):           sc("Marca del equipo", data["marca"])
+        if data.get("modelo"):          sc("Modelo del equipo", data["modelo"])
+        if data.get("serie"):           sc("Serie del equipo", data["serie"])
+        if data.get("ciudad"):          sc("Ciudad", data["ciudad"])
+        if data.get("estado"):          sc("Operativo", "SI" if data["estado"] == "Bueno" else "NO")
+
+        prefix = tipo_prefix(data.get("tipo", ""))
+        if prefix in FOTO_COLS:
+            c_eq, c_et, c_ocr = FOTO_COLS[prefix]
+            if data.get("foto_equipo"):   sc(c_eq, data["foto_equipo"])
+            if data.get("foto_etiqueta"): sc(c_et, data["foto_etiqueta"])
+            if data.get("ocr_raw"):       sc(c_ocr, data["ocr_raw"])
+
+        ws.update([fila], f"A{fila_num}", value_input_option="USER_ENTERED")
+        return
+
+    # Si es registro nuevo, creamos fila y append_row
+    fila = [""] * len(headers)
 
     def sc(col, val):
         i = col_idx(headers, col)
@@ -150,6 +181,15 @@ def escribir_sheets(data: dict) -> None:
     sc("MAC Address",                            data.get("mac", ""))
     sc("Nombre completo del equipo (hostname)",  data.get("hostname", ""))
     sc("ID_Unico",                               data.get("id_unico", str(uuid.uuid4())))
+
+    # Marcar casilla del tipo
+    tipo_str = data.get("tipo", "").upper()
+    if "TODO EN UNO" in tipo_str or "AIO" in tipo_str:
+        sc("COMPUTADOR TODO EN UNO", "1")
+    elif "PORTÁTIL" in tipo_str or "PORTATIL" in tipo_str:
+        sc("COMPUTADOR PORTÁTIL", "1")
+    elif "ESCRITORIO" in tipo_str or "CPU" in tipo_str:
+        sc("COMPUTADOR DE ESCRITORIO", "1")
 
     prefix = tipo_prefix(data.get("tipo", ""))
     if prefix in FOTO_COLS:
@@ -265,6 +305,7 @@ async def crear_registro(
     ciudad:            str  = Form("QUITO"),
     estado:            str  = Form("Bueno"),
     ocr_raw:           str  = Form(""),
+    fila:              Optional[int] = Form(None),
     foto_etiqueta: Optional[UploadFile] = File(None),
     foto_equipo:   Optional[UploadFile] = File(None),
 ):
@@ -283,6 +324,7 @@ async def crear_registro(
         foto_equipo=url_equipo or "",
         foto_etiqueta=url_etiqueta or "",
         ocr_raw=ocr_raw,
+        fila=fila,
     )
 
     try:
@@ -290,12 +332,13 @@ async def crear_registro(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error Google Sheets: {e}")
 
+    msg = f"✅ Datos y fotos de {tipo} actualizados en fila {fila}" if fila else f"✅ {tipo} guardado correctamente en Google Sheets"
     return {
         "ok": True,
         "id_unico": id_unico,
         "foto_equipo": url_equipo,
         "foto_etiqueta": url_etiqueta,
-        "message": "✅ Guardado en Google Sheets y fotos en Drive"
+        "message": msg
     }
 
 
