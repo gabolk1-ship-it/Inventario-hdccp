@@ -275,7 +275,36 @@ async def crear_registro(
     }
 
 
+@app.get("/api/test", summary="Diagnóstico de conexión")
+def test_conexion():
+    import os, json
+    resultado = {}
+    # 1 — ¿Existe la variable de entorno?
+    env_creds = os.environ.get("GOOGLE_CREDENTIALS")
+    resultado["env_var_presente"] = bool(env_creds)
+    if env_creds:
+        try:
+            info = json.loads(env_creds)
+            resultado["client_email"]   = info.get("client_email", "no encontrado")
+            resultado["project_id"]     = info.get("project_id", "no encontrado")
+            resultado["creds_json_ok"]  = True
+        except Exception as e:
+            resultado["creds_json_ok"]  = False
+            resultado["json_error"]     = str(e)
+    # 2 — ¿Puede conectar con Sheets?
+    try:
+        ws = get_sheet()
+        resultado["sheets_conectado"] = True
+        resultado["hoja_titulo"]      = ws.title
+        resultado["filas"]            = ws.row_count
+    except Exception as e:
+        resultado["sheets_conectado"] = False
+        resultado["sheets_error"]     = str(e)
+    return resultado
+
+
 @app.get("/api/inventario")
+
 def listar():
     try:
         return leer_sheets()
