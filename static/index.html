@@ -643,27 +643,49 @@ function selectMod(mod, card) {
 }
 
 /* ══ Cargar datos del Sheet al iniciar ══ */
+let reintentosSheet = 0;
 async function cargarSheetData() {
   const banner = document.getElementById('loading-banner');
-  if (banner) { banner.style.display = 'flex'; }
+  if (banner) {
+    banner.style.display = 'flex';
+    banner.style.background = '#e8f0fe';
+    banner.style.color = '#1a73e8';
+    banner.innerHTML = `<span style="animation:spin 1s linear infinite;display:inline-block">⏳</span> Conectando con Google Sheets...`;
+  }
   try {
-    const data = await (await fetch(`${API}/api/inventario`)).json();
+    const res = await fetch(`${API}/api/inventario`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error(data.detail || data.error || 'Respuesta inválida');
+
     sheetData = data;
     poblarCustodios(data);
     poblarEquipos(data);
+    reintentosSheet = 0;
     if (banner) banner.style.display = 'none';
-    // Mostrar conteo en header
+
     const ct = document.getElementById('sheet-count');
     if (ct) ct.textContent = `${data.length} equipos en Sheet`;
   } catch(e) {
     console.warn('No se pudo cargar Sheet:', e);
+    // Reintento automático 1 vez tras 2.5 segundos (útil en arranques en frío de Vercel)
+    if (reintentosSheet === 0) {
+      reintentosSheet++;
+      if (banner) {
+        banner.innerHTML = `<span style="animation:spin 1s linear infinite;display:inline-block">⏳</span> Reconectando con Google Sheets...`;
+      }
+      setTimeout(cargarSheetData, 2500);
+      return;
+    }
+
     if (banner) {
-      banner.innerHTML = `<span>⚠️ No se pudo conectar con Google Sheets. 
-        <button onclick="cargarSheetData()" style="background:white;color:#e65100;border:none;
-        font-weight:700;padding:4px 12px;border-radius:8px;cursor:pointer;margin-left:8px">
-        🔄 Reintentar</button></span>`;
+      banner.style.display = 'flex';
       banner.style.background = '#fff3e0';
       banner.style.color = '#e65100';
+      banner.innerHTML = `<span>⚠️ No se pudo conectar con Google Sheets (${e.message || 'Revisar conexión'}). 
+        <button onclick="reintentosSheet=0;cargarSheetData()" style="background:white;color:#e65100;border:1px solid #ffb74d;
+        font-weight:700;padding:5px 14px;border-radius:8px;cursor:pointer;margin-left:8px;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+        🔄 Reintentar</button></span>`;
     }
   }
 }
