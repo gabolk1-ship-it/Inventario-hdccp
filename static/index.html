@@ -4,205 +4,202 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IESS COTOCOLLAO - Inventario Tecnológico</title>
-  <script src="https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js"></script>
-  <style>
+  <script src="https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js"></script>  <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',Arial,sans-serif;background:#eef2f7;color:#1a1a2e;min-height:100vh}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+      background:#f8fafc;color:#0f172a;min-height:100vh;-webkit-font-smoothing:antialiased}
 
     /* ── Header ── */
-    header{background:linear-gradient(135deg,#000d44,#001460);color:white;padding:10px 18px;
+    header{background:linear-gradient(135deg,#000d44,#001460);color:white;padding:10px 20px;
       display:flex;align-items:center;justify-content:space-between;
-      position:sticky;top:0;z-index:200;box-shadow:0 2px 14px rgba(0,0,0,.4)}
+      position:sticky;top:0;z-index:200;box-shadow:0 2px 14px rgba(0,0,0,.35)}
     .brand{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
-    .banner-iess{height:46px;max-width:100%;object-fit:contain;border-radius:6px;display:block}
-    .badge-v{background:#34a853;color:white;font-size:10px;padding:2px 7px;border-radius:12px;font-weight:700;margin-left:4px;align-self:flex-start}
-    .nav-tabs{display:flex;gap:6px;flex-wrap:wrap}
-    .nav-tabs button{background:rgba(255,255,255,.15);border:none;color:white;
-      padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;
+    .banner-iess{height:44px;max-width:100%;object-fit:contain;border-radius:6px;display:block}
+    .badge-v{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:white;font-size:10px;padding:2px 8px;border-radius:12px;font-weight:600;margin-left:4px;align-self:flex-start}
+    .nav-tabs{display:flex;gap:4px;background:rgba(255,255,255,.1);padding:3px;border-radius:24px;border:1px solid rgba(255,255,255,.15)}
+    .nav-tabs button{background:transparent;border:none;color:#e2e8f0;
+      padding:7px 20px;border-radius:20px;font-size:13px;font-weight:600;letter-spacing:.2px;
       cursor:pointer;transition:all .2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-    .nav-tabs button.active{background:white;color:#1a73e8}
+    .nav-tabs button:hover{color:white;background:rgba(255,255,255,.08)}
+    .nav-tabs button.active{background:white;color:#001460;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.22)}
 
     /* ── Pages ── */
-    .page{display:none;padding:20px;max-width:860px;margin:0 auto}
+    .page{display:none;padding:22px 16px;max-width:880px;margin:0 auto}
     .page.active{display:block}
 
     /* ── Module selector ── */
-    .module-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
-    .module-card{background:white;border-radius:16px;padding:24px 20px;text-align:center;
-      cursor:pointer;box-shadow:0 3px 14px rgba(0,0,0,.1);border:3px solid transparent;
-      transition:all .2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-    .module-card:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.15)}
+    .module-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}
+    .module-card{background:white;border-radius:14px;padding:20px 18px;text-align:left;
+      cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.05),0 4px 12px rgba(0,0,0,.03);border:2px solid #e2e8f0;
+      transition:all .2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent;display:flex;align-items:flex-start;gap:14px}
+    .module-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.08);border-color:#cbd5e1}
     .module-card.active{border-color:var(--c);background:var(--bg)}
-    .module-card .mc-icon{font-size:44px;margin-bottom:10px}
-    .module-card h3{font-size:16px;margin-bottom:6px}
-    .module-card p{font-size:12px;color:#666;line-height:1.4}
-    .mod-completo{--c:#1a73e8;--bg:#f0f4ff}
-    .mod-periferico{--c:#34a853;--bg:#f0fdf4}
+    .module-card .mc-icon-box{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--ibg);color:var(--c);flex-shrink:0}
+    .module-card h3{font-size:15px;font-weight:700;margin-bottom:4px;color:#0f172a}
+    .module-card p{font-size:12px;color:#64748b;line-height:1.45}
+    .mod-completo{--c:#0284c7;--bg:#f0f9ff;--ibg:#e0f2fe}
+    .mod-periferico{--c:#059669;--bg:#f0fdf4;--ibg:#d1fae5}
 
     /* ── Cards / sections ── */
     .card{background:white;border-radius:14px;padding:20px;margin-bottom:16px;
-      box-shadow:0 2px 10px rgba(0,0,0,.08)}
+      box-shadow:0 1px 3px rgba(0,0,0,.05),0 4px 12px rgba(0,0,0,.03);border:1px solid #e2e8f0}
     .card-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;
-      font-size:15px;font-weight:700;color:#1a1a2e}
-    .card-header .ch-icon{font-size:22px}
+      font-size:14px;font-weight:700;color:#0f172a;letter-spacing:.2px;
+      border-left:3px solid #0284c7;padding-left:10px}
 
     /* ── Fields ── */
     .fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;min-width:0}
     .fields-grid > *{min-width:0;max-width:100%}
     .fields-grid.cols3{grid-template-columns:1fr 1fr 1fr}
     .full{grid-column:1/-1}
-    .field-group{display:flex;flex-direction:column;gap:4px;min-width:0;width:100%;max-width:100%}
-    .field-group label{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.4px}
-    .field-group input,.field-group select{padding:9px 11px;border:1.5px solid #d1d5db;
-      border-radius:9px;font-size:13px;transition:border-color .2s,box-shadow .2s;background:white;
+    .field-group{display:flex;flex-direction:column;gap:5px;min-width:0;width:100%;max-width:100%}
+    .field-group label{font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px}
+    .field-group input,.field-group select{padding:10px 12px;border:1px solid #cbd5e1;
+      border-radius:9px;font-size:13px;color:#0f172a;transition:border-color .2s,box-shadow .2s;background:white;
       width:100%;max-width:100%;box-sizing:border-box;min-width:0}
     .field-group select{
       text-overflow:ellipsis;white-space:nowrap;overflow:hidden;
       appearance:none;-webkit-appearance:none;cursor:pointer;
-      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-      background-repeat:no-repeat;background-position:right 10px center;padding-right:32px;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right 12px center;padding-right:34px;
     }
-    .field-group input:focus,.field-group select:focus{outline:none;border-color:#1a73e8;
-      box-shadow:0 0 0 3px rgba(26,115,232,.12)}
-    .field-group input.auto{background:#fffde7;border-color:#f9a825}
-    .field-group input[readonly]{background:#f5f5f5;color:#666}
-    .ia-badge{display:inline-flex;align-items:center;gap:4px;background:#e8f5e9;color:#1b5e20;
+    .field-group input:focus,.field-group select:focus{outline:none;border-color:#0284c7;
+      box-shadow:0 0 0 3px rgba(2,132,199,.15)}
+    .field-group input.auto{background:#fefce8;border-color:#facc15}
+    .field-group input[readonly]{background:#f8fafc;color:#64748b}
+    .ia-badge{display:inline-flex;align-items:center;gap:4px;background:#ecfdf5;color:#065f46;
       font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px}
-    @keyframes iaPulse{0%{background-color:#dcfce7;border-color:#22c55e}100%{background-color:white;border-color:#22c55e}}
-    .ia-highlight{animation:iaPulse 1.6s ease-out;border-color:#22c55e !important}
+    @keyframes iaPulse{0%{background-color:#dcfce7;border-color:#10b981}100%{background-color:white;border-color:#10b981}}
+    .ia-highlight{animation:iaPulse 1.6s ease-out;border-color:#10b981 !important}
 
     /* ── Periféricos chips ── */
-    .peri-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px}
-    .peri-chip{border:2px solid #e0e0e0;border-radius:12px;padding:12px 6px;text-align:center;
-      cursor:pointer;font-size:12px;font-weight:700;transition:all .2s}
-    .peri-chip .pi{font-size:26px;display:block;margin-bottom:4px}
-    .peri-chip:hover{border-color:#888}
-    .peri-chip.sel-mon{border-color:#34a853;background:#f0fdf4;color:#1b5e20}
-    .peri-chip.sel-mou{border-color:#9c27b0;background:#faf4ff;color:#4a148c}
-    .peri-chip.sel-tec{border-color:#f9a825;background:#fffde7;color:#e65100}
-    .peri-chip.sel-imp{border-color:#ea4335;background:#fdf0ef;color:#b71c1c}
+    .peri-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:10px;margin-bottom:4px}
+    .peri-chip{border:1px solid #cbd5e1;background:#ffffff;border-radius:10px;padding:12px 8px;text-align:center;
+      cursor:pointer;font-size:12.5px;font-weight:600;color:#334155;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px}
+    .peri-chip:hover{border-color:#94a3b8;background:#f8fafc}
+    .peri-chip.sel-mon{border-color:#0284c7;background:#f0f9ff;color:#0369a1;font-weight:700}
+    .peri-chip.sel-mou{border-color:#059669;background:#f0fdf4;color:#047857;font-weight:700}
+    .peri-chip.sel-tec{border-color:#d97706;background:#fffbeb;color:#b45309;font-weight:700}
+    .peri-chip.sel-imp{border-color:#e11d48;background:#fff1f2;color:#be123c;font-weight:700}
 
     /* ── Foto zones ── */
     .foto-row{display:grid;grid-template-columns:repeat(auto-fit, minmax(115px, 1fr));gap:10px}
-    .foto-zone{border:2px dashed #c5cae9;border-radius:14px;padding:14px;text-align:center;
-      cursor:pointer;position:relative;transition:border-color .2s,background .2s;min-height:130px;
-      display:flex;flex-direction:column;align-items:center;justify-content:center}
-    .foto-zone:hover{border-color:#1a73e8;background:#f0f4ff}
+    .foto-zone{border:1.5px dashed #94a3b8;border-radius:12px;padding:16px 10px;text-align:center;
+      cursor:pointer;position:relative;transition:border-color .2s,background .2s;min-height:120px;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8fafc}
+    .foto-zone:hover{border-color:#0284c7;background:#f0f9ff}
     .foto-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-    .foto-zone img.fz-prev{width:100%;height:120px;object-fit:cover;border-radius:10px;display:none;margin-bottom:6px}
-    .foto-zone.has-foto{border-style:solid;border-color:#34a853}
-    .fz-icon{font-size:32px;margin-bottom:6px}
-    .fz-label{font-size:12px;font-weight:700;color:#333}
-    .fz-hint{font-size:11px;color:#888;margin-top:3px}
-    .ocr-badge{display:inline-block;background:#1a73e8;color:white;font-size:9px;
+    .foto-zone img.fz-prev{width:100%;height:120px;object-fit:cover;border-radius:9px;display:none;margin-bottom:6px}
+    .foto-zone.has-foto{border-style:solid;border-color:#059669;background:#f0fdf4}
+    .fz-svg{margin-bottom:8px;display:flex;align-items:center;justify-content:center}
+    .fz-label{font-size:12px;font-weight:700;color:#1e293b}
+    .fz-hint{font-size:10.5px;color:#64748b;margin-top:3px;line-height:1.25}
+    .ocr-badge{display:inline-block;background:#0284c7;color:white;font-size:9px;
       font-weight:800;padding:2px 6px;border-radius:8px;margin-left:4px}
 
     /* ── OCR box ── */
-    .ocr-box{background:#f8f9ff;border:1px solid #c5cae9;border-radius:10px;padding:10px 13px;margin-top:12px}
+    .ocr-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-top:12px}
     .ocr-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-    .ocr-title{font-weight:700;font-size:11px;color:#555}
-    .ocr-btn{background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:7px;
-      padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600}
-    .ocr-btn:hover{background:#1a73e8;color:white}
-    .ocr-text{font-family:monospace;font-size:11px;color:#333;white-space:pre-wrap;
+    .ocr-title{font-weight:700;font-size:11.5px;color:#475569}
+    .ocr-btn{background:white;border:1px solid #0284c7;color:#0284c7;border-radius:7px;
+      padding:4px 10px;font-size:11.5px;cursor:pointer;font-weight:600;transition:all .2s}
+    .ocr-btn:hover{background:#0284c7;color:white}
+    .ocr-text{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#334155;white-space:pre-wrap;
       word-break:break-all;max-height:60px;overflow-y:auto}
-    .ocr-bar{height:3px;background:#e0e0e0;border-radius:2px;margin-top:6px;overflow:hidden}
-    .ocr-fill{height:100%;width:0%;background:#1a73e8;border-radius:2px;transition:width .3s}
-    .ocr-st{font-size:10px;color:#888;margin-top:3px}
+    .ocr-bar{height:4px;background:#e2e8f0;border-radius:2px;margin-top:6px;overflow:hidden}
+    .ocr-fill{height:100%;width:0%;background:#0284c7;border-radius:2px;transition:width .3s}
+    .ocr-st{font-size:10.5px;color:#64748b;margin-top:4px}
 
     /* ── BAT upload ── */
-    .bat-zone{border:2px dashed #1a73e8;border-radius:12px;padding:18px;text-align:center;
-      cursor:pointer;position:relative;background:#f0f4ff;transition:background .2s}
-    .bat-zone:hover{background:#e3eaff}
+    .bat-zone{border:1.5px dashed #0284c7;border-radius:12px;padding:18px;text-align:center;
+      cursor:pointer;position:relative;background:#f0f9ff;transition:background .2s}
+    .bat-zone:hover{background:#e0f2fe}
     .bat-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-    .bat-zone .bat-icon{font-size:36px;margin-bottom:6px}
-    .bat-zone .bat-label{font-size:14px;font-weight:700;color:#1a73e8}
-    .bat-zone .bat-hint{font-size:11px;color:#555;margin-top:4px}
-    .bat-ok{display:none;background:#e8f5e9;border-radius:10px;padding:10px 14px;
-      font-size:12px;color:#1b5e20;font-weight:600;margin-top:8px}
+    .bat-zone .bat-icon{margin-bottom:6px;display:flex;align-items:center;justify-content:center}
+    .bat-zone .bat-label{font-size:14px;font-weight:700;color:#0369a1}
+    .bat-zone .bat-hint{font-size:11px;color:#64748b;margin-top:4px}
+    .bat-ok{display:none;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:10px 14px;
+      font-size:12px;color:#065f46;font-weight:600;margin-top:8px}
 
     /* ── Estado pills ── */
-    .estado-pills{display:flex;gap:8px}
-    .estado-pill{flex:1;padding:9px 4px;text-align:center;border:2px solid #e0e0e0;
-      border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}
-    .sel-bueno{background:#e8f5e9;border-color:#34a853;color:#1b5e20}
-    .sel-regular{background:#fff8e1;border-color:#f9a825;color:#e65100}
-    .sel-malo{background:#fce4ec;border-color:#ea4335;color:#b71c1c}
+    .estado-pills{display:flex;gap:10px}
+    .estado-pill{flex:1;padding:10px 8px;text-align:center;border:1px solid #cbd5e1;
+      border-radius:10px;font-size:13px;font-weight:600;color:#475569;cursor:pointer;transition:all .2s;
+      background:white;display:flex;align-items:center;justify-content:center;gap:6px}
+    .estado-pill:hover{border-color:#94a3b8;background:#f8fafc}
+    .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+    .dot-green{background:#10b981}
+    .dot-amber{background:#f59e0b}
+    .dot-red{background:#ef4444}
+    .sel-bueno{background:#ecfdf5;border-color:#10b981;color:#065f46;font-weight:700}
+    .sel-regular{background:#fffbeb;border-color:#f59e0b;color:#92400e;font-weight:700}
+    .sel-malo{background:#fef2f2;border-color:#ef4444;color:#991b1b;font-weight:700}
 
     /* ── Save button ── */
-    .btn-save{width:100%;padding:14px;background:linear-gradient(135deg,#34a853,#1b5e20);
-      color:white;border:none;border-radius:12px;font-size:16px;font-weight:700;
+    .btn-save{width:100%;padding:13px 20px;background:linear-gradient(135deg,#0284c7,#0369a1);
+      color:white;border:none;border-radius:11px;font-size:15px;font-weight:700;letter-spacing:.2px;
       cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
-      box-shadow:0 4px 14px rgba(52,168,83,.35);transition:filter .2s,transform .15s;margin-top:4px}
+      box-shadow:0 3px 10px rgba(2,132,199,.25);transition:filter .2s,transform .15s;margin-top:6px}
     .btn-save:hover{filter:brightness(108%);transform:translateY(-1px)}
 
     /* ── Inventario ── */
     .inv-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-    .inv-hdr h2{font-size:20px}
-    .btn-ref{background:#1a73e8;color:white;border:none;padding:8px 16px;
-      border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
-    .table-card{background:white;border-radius:14px;box-shadow:0 2px 14px rgba(0,0,0,.08);overflow:hidden}
+    .inv-hdr h2{font-size:18px;font-weight:800;color:#0f172a}
+    .btn-ref{background:#0284c7;color:white;border:none;padding:8px 16px;
+      border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;transition:background .2s}
+    .btn-ref:hover{background:#0369a1}
+    .table-card{background:white;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05),0 4px 12px rgba(0,0,0,.03);
+      border:1px solid #e2e8f0;overflow:hidden}
     .tw{overflow-x:auto}
     table{width:100%;border-collapse:collapse;font-size:12px}
-    thead th{background:#1a1a2e;color:white;padding:10px 8px;text-align:left;white-space:nowrap}
-    tbody td{padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+    thead th{background:#0f172a;color:white;padding:11px 10px;text-align:left;white-space:nowrap;font-weight:600;letter-spacing:.3px}
+    tbody td{padding:10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;color:#334155}
     tbody tr:last-child td{border-bottom:none}
-    tbody tr:hover td{background:#f8f9ff}
+    tbody tr:hover td{background:#f8fafc}
     .thumb{width:38px;height:38px;object-fit:cover;border-radius:6px}
-    .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:800;color:white}
-    .chip-cpu{background:#1a73e8}.chip-monitor{background:#34a853}.chip-teclado{background:#f9a825;color:#333}
-    .chip-mouse{background:#9c27b0}.chip-impresora{background:#ea4335}
-    .chip-escritorio{background:#00897b}.chip-portatil{background:#5c6bc0}.chip-aio{background:#ff7043}
-    .badge-si{background:#e8f5e9;color:#1b5e20;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:800}
-    .badge-no{background:#fce4ec;color:#b71c1c;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:800}
-    .btn-del{background:#fce4ec;color:#c62828;border:none;padding:5px 8px;border-radius:7px;cursor:pointer;font-size:13px}
-    .btn-del:hover{background:#ea4335;color:white}
+    .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;color:white}
+    .chip-cpu{background:#0284c7}.chip-monitor{background:#059669}.chip-teclado{background:#d97706}
+    .chip-mouse{background:#7c3aed}.chip-impresora{background:#e11d48}
+    .chip-escritorio{background:#0f766e}.chip-portatil{background:#4338ca}.chip-aio{background:#c2410c}
+    .badge-si{background:#ecfdf5;color:#065f46;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700}
+    .badge-no{background:#fef2f2;color:#991b1b;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700}
+    .btn-del{background:#fee2e2;color:#991b1b;border:none;padding:5px 9px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600}
+    .btn-del:hover{background:#ef4444;color:white}
 
     /* ── Toast ── */
     .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
       padding:11px 26px;border-radius:22px;font-size:14px;font-weight:600;
       z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.22)}
     .toast.show{opacity:1}
-    .toast.ok{background:#34a853;color:white}
-    .toast.err{background:#ea4335;color:white}
+    .toast.ok{background:#059669;color:white}
+    .toast.err{background:#e11d48;color:white}
 
     /* ── Section label ── */
     .slabel{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;
-      color:#888;margin:16px 0 10px;display:flex;align-items:center;gap:6px}
-    .slabel::after{content:'';flex:1;height:1px;background:#e0e0e0}
+      color:#64748b;margin:16px 0 10px;display:flex;align-items:center;gap:6px}
+    .slabel::after{content:'';flex:1;height:1px;background:#e2e8f0}
 
-    /* ── Responsive — móvil primero ── */
-
-    /* Teléfonos pequeños y medianos (≤ 640px) */
+    /* ── Responsive ── */
     @media(max-width:640px){
-      /* Layout general */
       body{font-size:15px}
       .page{padding:12px}
-
-      /* Header */
       header{padding:8px 12px;flex-wrap:wrap;gap:8px}
       .brand{width:100%;justify-content:center}
       .banner-iess{height:36px;max-width:280px}
       .nav-tabs{width:100%;justify-content:center}
-      .nav-tabs button{flex:1;font-size:13px;padding:9px 6px;border-radius:14px}
+      .nav-tabs button{flex:1;font-size:13px;padding:8px 6px;border-radius:16px}
       #sheet-count{display:none}
 
-      /* Cards */
       .card{padding:16px 14px;border-radius:12px}
-      .card-header{font-size:14px}
+      .card-header{font-size:13.5px}
 
-      /* Módulos */
       .module-grid{grid-template-columns:1fr;gap:10px}
-      .module-card{padding:18px 14px}
-      .module-card .mc-icon{font-size:36px}
-      .module-card h3{font-size:15px}
+      .module-card{padding:16px 14px}
+      .module-card h3{font-size:14.5px}
 
-      /* Periférico chips: 2 columnas grandes */
-      .peri-grid{grid-template-columns:1fr 1fr;gap:10px}
-      .peri-chip{padding:16px 6px;font-size:13px;border-radius:14px}
-      .peri-chip .pi{font-size:32px;margin-bottom:6px}
+      .peri-grid{grid-template-columns:1fr 1fr;gap:8px}
+      .peri-chip{padding:12px 6px;font-size:12.5px;border-radius:10px}
 
-      /* Campos: 1 columna, inputs grandes */
       .fields-grid{grid-template-columns:1fr;min-width:0;width:100%}
       .fields-grid.cols3{grid-template-columns:1fr;min-width:0;width:100%}
       .fields-grid > *{min-width:0;max-width:100%}
@@ -213,32 +210,25 @@
         width:100%;max-width:100%;min-width:0;box-sizing:border-box;
       }
       .field-group select{padding-right:34px;background-position:right 12px center}
-      .field-group label{font-size:12px}
+      .field-group label{font-size:11.5px}
 
-      /* Fotos: 3 tarjetas responsivas */
       .foto-row{grid-template-columns:repeat(auto-fit, minmax(105px, 1fr));gap:8px}
-      .foto-zone{min-height:125px;border-radius:12px;padding:12px 6px}
-      .fz-icon{font-size:32px}
-      .fz-label{font-size:12px;line-height:1.2}
+      .foto-zone{min-height:120px;border-radius:12px;padding:12px 6px}
+      .fz-label{font-size:11.5px;line-height:1.2}
       .fz-hint{font-size:10px}
-      .foto-zone img.fz-prev{height:120px}
+      .foto-zone img.fz-prev{height:115px}
 
-      /* BAT zone */
-      .bat-zone{padding:22px 14px}
-      .bat-zone .bat-icon{font-size:42px}
-      .bat-zone .bat-label{font-size:15px}
+      .bat-zone{padding:18px 12px}
+      .bat-zone .bat-label{font-size:14px}
 
-      /* OCR box */
       .ocr-box{padding:12px}
-      .ocr-text{font-size:12px;max-height:80px}
-      .ocr-btn{padding:6px 14px;font-size:12px}
+      .ocr-text{font-size:11.5px;max-height:80px}
+      .ocr-btn{padding:6px 12px;font-size:11.5px}
 
-      /* Estado pills: más grandes */
       .estado-pills{gap:8px}
-      .estado-pill{padding:12px 4px;font-size:14px;border-radius:12px}
+      .estado-pill{padding:11px 4px;font-size:13px;border-radius:10px}
 
-      /* Botón guardar: más grande y visible */
-      .btn-save{padding:17px;font-size:17px;border-radius:14px;margin-top:8px}
+      .btn-save{padding:15px 12px;font-size:15px;border-radius:11px}
 
       /* Inventario: scroll horizontal con fuente más pequeña */
       .inv-hdr h2{font-size:17px}
@@ -278,18 +268,18 @@
 <header>
   <div class="brand">
     <img src="/iess-blue.jpeg" alt="IESS Hospital del Día Cotocollao" class="banner-iess">
-    <span class="badge-v">v3.8</span>
+    <span class="badge-v">v3.9</span>
   </div>
   <div class="nav-tabs">
-    <button class="active" onclick="showPage('reg',this)">📝 Registrar</button>
-    <button onclick="showPage('inv',this)">📋 Inventario</button>
+    <button class="active" onclick="showPage('reg',this)">Registrar</button>
+    <button onclick="showPage('inv',this)">Inventario</button>
     <span id="sheet-count" style="font-size:11px;opacity:.7;align-self:center;margin-left:6px"></span>
   </div>
 </header>
 
 <!-- Banner de carga -->
 <div id="loading-banner" style="display:flex;align-items:center;justify-content:center;
-  gap:10px;background:#e8f0fe;color:#1a73e8;padding:10px;font-size:13px;font-weight:600">
+  gap:10px;background:#eff6ff;color:#0284c7;padding:10px;font-size:13px;font-weight:600;border-bottom:1px solid #dbeafe">
   <span style="animation:spin 1s linear infinite;display:inline-block">⏳</span>
   Cargando datos de Google Sheets...
 </div>
@@ -301,14 +291,22 @@
   <!-- Selector de módulo -->
   <div class="module-grid">
     <div class="module-card mod-completo" onclick="selectMod('completo',this)">
-      <div class="mc-icon">🖥️</div>
-      <h3>Registro Completo</h3>
-      <p>CPU, Laptop o All-in-One. Ejecuta el .bat en el equipo para auto-completar los datos técnicos.</p>
+      <div class="mc-icon-box">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      </div>
+      <div class="mc-content">
+        <h3>Registro de Computador</h3>
+        <p>CPU, Portátil o Todo en Uno. Diagnóstico técnico con archivo BAT y registro de placas.</p>
+      </div>
     </div>
     <div class="module-card mod-periferico" onclick="selectMod('periferico',this)">
-      <div class="mc-icon">🖱️</div>
-      <h3>Periférico / Complementar</h3>
-      <p>Monitor, Mouse, Teclado, Impresora. Usa la cámara y OCR para completar datos faltantes.</p>
+      <div class="mc-icon-box">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="12" rx="2"/><line x1="2" y1="20" x2="22" y2="20"/><path d="M6 18h12"/></svg>
+      </div>
+      <div class="mc-content">
+        <h3>Componentes y Periféricos</h3>
+        <p>Monitor, Mouse, Teclado, Impresora o Chasis. Vincula periféricos a un computador existente.</p>
+      </div>
     </div>
   </div>
 
@@ -317,11 +315,11 @@
 
     <!-- Custodio -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">👤</span>Seleccionar Custodio</div>
+      <div class="card-header">Asignación de Custodio y Ubicación</div>
       <div class="fields-grid">
         <div class="field-group full">
-          <label>Custodio <span style="font-weight:400;color:#666">(escribe para filtrar rápido)</span></label>
-          <input type="text" id="c1-filtro-custodio" placeholder="🔍 Escribe nombre o cédula para filtrar..."
+          <label>Custodio <span style="font-weight:400;color:#64748b">(escribe para filtrar rápido)</span></label>
+          <input type="text" id="c1-filtro-custodio" placeholder="Escribe nombre o cédula para filtrar..."
                  oninput="filtrarCustodios(this.value)" style="margin-bottom:5px">
           <select id="c1-custodio" onchange="custodioChanged('c1')">
             <option value="">-- Cargando custodios... --</option>
@@ -344,20 +342,12 @@
 
     <!-- Tipo de Computador -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">🖥️</span>Tipo de Computador</div>
+      <div class="card-header">Tipo de Computador</div>
       <div class="peri-grid">
-        <div class="peri-chip sel-mon" id="chip-c1-escritorio" onclick="selTipoC1('COMPUTADOR DE ESCRITORIO',this)">
-          <span class="pi">🖥️</span>CPU / Escritorio
-        </div>
-        <div class="peri-chip" id="chip-c1-aio" onclick="selTipoC1('COMPUTADOR TODO EN UNO',this)">
-          <span class="pi">🖥️</span>Todo en Uno (AIO)
-        </div>
-        <div class="peri-chip" id="chip-c1-portatil" onclick="selTipoC1('COMPUTADOR PORTÁTIL',this)">
-          <span class="pi">💻</span>Portátil / Laptop
-        </div>
-        <div class="peri-chip" id="chip-c1-servidor" onclick="selTipoC1('SERVIDOR',this)">
-          <span class="pi">🖧</span>Servidor
-        </div>
+        <div class="peri-chip sel-mon" id="chip-c1-escritorio" onclick="selTipoC1('COMPUTADOR DE ESCRITORIO',this)">CPU / Escritorio</div>
+        <div class="peri-chip" id="chip-c1-aio" onclick="selTipoC1('COMPUTADOR TODO EN UNO',this)">Todo en Uno (AIO)</div>
+        <div class="peri-chip" id="chip-c1-portatil" onclick="selTipoC1('COMPUTADOR PORTÁTIL',this)">Portátil / Laptop</div>
+        <div class="peri-chip" id="chip-c1-servidor" onclick="selTipoC1('SERVIDOR',this)">Servidor</div>
       </div>
       <input type="hidden" id="c1-tipo" value="COMPUTADOR DE ESCRITORIO">
     </div>
@@ -365,14 +355,16 @@
     <!-- BAT -->
     <div class="card">
       <div class="card-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
-        <div style="display:flex;align-items:center;gap:10px"><span class="ch-icon">⚙️</span>Datos del Sistema (.bat)</div>
-        <a href="/recopilar_info.bat" download style="display:inline-flex;align-items:center;gap:6px;background:#e8f0fe;color:#1a73e8;text-decoration:none;font-weight:700;font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid #bfdbfe">
-          📥 Descargar .bat para el PC
+        <div>Especificaciones del Sistema (.bat)</div>
+        <a href="/recopilar_info.bat" download style="display:inline-flex;align-items:center;gap:6px;background:#f0f9ff;color:#0284c7;text-decoration:none;font-weight:700;font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid #bae6fd">
+          Descargar recopilador (.bat)
         </a>
       </div>
       <div class="bat-zone" id="bat-zone">
         <input type="file" id="bat-file" accept=".json,.txt" onchange="cargarBat()">
-        <div class="bat-icon">📄</div>
+        <div class="bat-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+        </div>
         <div class="bat-label">Sube el archivo info.json</div>
         <div class="bat-hint">Ejecuta <strong>recopilar_info.bat</strong> en el equipo y sube el archivo generado</div>
       </div>
@@ -434,13 +426,15 @@
 
     <!-- Fotos + OCR etiqueta -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">📷</span>Fotos del Equipo y Etiquetas</div>
+      <div class="card-header">Registro Fotográfico y Lectura de Etiquetas</div>
       <div class="foto-row">
         <div class="foto-zone" id="c1-zone-eq">
           <input type="file" id="c1-foto-eq" accept="image/*" capture="environment"
                  onchange="prevFoto(this,'c1-prev-eq','c1-zone-eq','c1-icon-eq')">
           <img class="fz-prev" id="c1-prev-eq" alt="">
-          <div class="fz-icon" id="c1-icon-eq">📷</div>
+          <div class="fz-svg" id="c1-icon-eq">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
           <div class="fz-label" id="c1-lbl-foto-eq">Foto del Equipo / CPU</div>
           <div class="fz-hint">Toca para abrir cámara</div>
         </div>
@@ -448,7 +442,9 @@
           <input type="file" id="c1-foto-et" accept="image/*" capture="environment"
                  onchange="prevFoto(this,'c1-prev-et','c1-zone-et','c1-icon-et'); runOCR('c1','bien')">
           <img class="fz-prev" id="c1-prev-et" alt="">
-          <div class="fz-icon" id="c1-icon-et">🏷️</div>
+          <div class="fz-svg" id="c1-icon-et">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          </div>
           <div class="fz-label" id="c1-lbl-foto-et">Placa / Bien IESS <span class="ocr-badge">OCR</span></div>
           <div class="fz-hint" id="c1-hint-et">Código IM- / Placa</div>
         </div>
@@ -456,29 +452,31 @@
           <input type="file" id="c1-foto-aux" accept="image/*" capture="environment"
                  onchange="prevFoto(this,'c1-prev-aux','c1-zone-aux','c1-icon-aux'); runOCR('c1','aux')">
           <img class="fz-prev" id="c1-prev-aux" alt="">
-          <div class="fz-icon" id="c1-icon-aux">🔢</div>
+          <div class="fz-svg" id="c1-icon-aux">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M21 5v14"/></svg>
+          </div>
           <div class="fz-label" id="c1-lbl-foto-aux">Cód. Auxiliar <span class="ocr-badge">OCR</span></div>
           <div class="fz-hint" id="c1-hint-aux">Etiqueta de barras</div>
         </div>
       </div>
       <div class="ocr-box">
         <div class="ocr-hdr">
-          <span class="ocr-title" id="c1-ocr-title">🤖 Agente IA de Visión / OCR</span>
+          <span class="ocr-title" id="c1-ocr-title">Reconocimiento Automático de Etiquetas (IA)</span>
           <div style="display:flex;gap:6px">
-            <button class="ocr-btn" onclick="runOCR('c1','bien')">🔄 Re-analizar</button>
+            <button class="ocr-btn" onclick="runOCR('c1','bien')">Re-analizar imagen</button>
           </div>
         </div>
         <div class="ocr-text" id="c1-ocr-text">Toma foto de la Placa del Bien IESS o de la etiqueta de Código Auxiliar...</div>
         <div class="ocr-bar"><div class="ocr-fill" id="c1-ocr-fill"></div></div>
         <div class="ocr-st" id="c1-ocr-st"></div>
 
-        <div class="fields-grid" style="margin-top:14px;background:#f0f7ff;padding:12px;border-radius:12px;border:1.5px solid #bfdbfe">
+        <div class="fields-grid" style="margin-top:14px;background:#f0f9ff;padding:12px;border-radius:12px;border:1px solid #bae6fd">
           <div class="field-group">
-            <label style="color:#1a73e8;font-weight:800">🏷️ Código del Bien IESS (Placa)</label>
+            <label style="color:#0369a1;font-weight:700">Código del Bien IESS (Placa)</label>
             <input type="text" id="c1-codigo-bien" placeholder="Ej: IM-0511 C.C.Q.A.H.D." style="font-weight:700" oninput="verificarCoincidenciaC1()">
           </div>
           <div class="field-group">
-            <label style="color:#1a73e8;font-weight:800">🔢 Código Auxiliar (Etiqueta de Barras)</label>
+            <label style="color:#0369a1;font-weight:700">Código Auxiliar (Etiqueta de Barras)</label>
             <input type="text" id="c1-codigo-aux" placeholder="Ej: 27038980000661" style="font-weight:700" oninput="verificarCoincidenciaC1()">
           </div>
         </div>
@@ -487,7 +485,7 @@
 
     <!-- Identificación y estado -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">🏷️</span>Datos Institucionales y Estado</div>
+      <div class="card-header">Datos Institucionales y Estado</div>
       <div class="fields-grid">
         <div class="field-group">
           <label>Proveedor</label>
@@ -500,17 +498,17 @@
       </div>
       <div class="slabel">Estado del equipo</div>
       <div class="estado-pills">
-        <div class="estado-pill sel-bueno" onclick="selEstado('c1','Bueno',this)">✅ Bueno</div>
-        <div class="estado-pill" onclick="selEstado('c1','Regular',this)">⚠️ Regular</div>
-        <div class="estado-pill" onclick="selEstado('c1','Malo',this)">❌ Malo</div>
+        <div class="estado-pill sel-bueno" onclick="selEstado('c1','Bueno',this)"><span class="status-dot dot-green"></span> Bueno</div>
+        <div class="estado-pill" onclick="selEstado('c1','Regular',this)"><span class="status-dot dot-amber"></span> Regular</div>
+        <div class="estado-pill" onclick="selEstado('c1','Malo',this)"><span class="status-dot dot-red"></span> Malo</div>
       </div>
       <input type="hidden" id="c1-estado" value="Bueno">
       <input type="hidden" id="c1-fila" value="">
     </div>
 
-    <div id="c1-match-banner" style="display:none;padding:12px;background:#e8f5e9;border:1.5px solid #81c784;border-radius:12px;color:#1b5e20;font-size:13px;margin:10px 0;font-weight:600;box-shadow:0 2px 8px rgba(46,125,50,.15)"></div>
+    <div id="c1-match-banner" style="display:none;padding:12px;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:12px;color:#065f46;font-size:13px;margin:10px 0;font-weight:600;box-shadow:0 2px 8px rgba(5,150,105,.12)"></div>
 
-    <button class="btn-save" id="btn-save-c1" onclick="guardar('completo')">💾 Guardar Computador / CPU en Google Sheets</button>
+    <button class="btn-save" id="btn-save-c1" onclick="guardar('completo')">Guardar Computador / CPU en Google Sheets</button>
   </div>
 
   <!-- ════ MÓDULO 2: PERIFÉRICO ════ -->
@@ -518,10 +516,10 @@
 
     <!-- Equipo al que pertenece -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">🖥️</span>Equipo al que pertenece</div>
+      <div class="card-header">Vinculación con Computador</div>
       <div class="field-group full">
-        <label>Selecciona el computador <span style="font-weight:400;color:#666">(escribe para filtrar)</span></label>
-        <input type="text" id="p-filtro-equipo" placeholder="🔍 Escribe marca, serie o custodio..."
+        <label>Selecciona el computador <span style="font-weight:400;color:#64748b">(escribe para filtrar)</span></label>
+        <input type="text" id="p-filtro-equipo" placeholder="Escribe marca, serie o custodio para buscar..."
                oninput="filtrarEquipos(this.value)" style="margin-bottom:5px">
         <select id="p-equipo">
           <option value="">-- Cargando equipos... --</option>
@@ -541,36 +539,28 @@
 
     <!-- Tipo de componente o periférico -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">🔌</span>Elemento a Registrar / Complementar</div>
+      <div class="card-header">Elemento a Registrar / Complementar</div>
       <div class="peri-grid">
-        <div class="peri-chip" id="chip-cpu" onclick="selPeri('CPU',this)">
-          <span class="pi">🖥️</span>CPU / Chasis
-        </div>
-        <div class="peri-chip" id="chip-monitor" onclick="selPeri('MONITOR',this)">
-          <span class="pi">🖥️</span>Monitor
-        </div>
-        <div class="peri-chip" id="chip-mouse" onclick="selPeri('MOUSE',this)">
-          <span class="pi">🖱️</span>Mouse
-        </div>
-        <div class="peri-chip" id="chip-teclado" onclick="selPeri('TECLADO',this)">
-          <span class="pi">⌨️</span>Teclado
-        </div>
-        <div class="peri-chip" id="chip-impresora" onclick="selPeri('IMPRESORA',this)">
-          <span class="pi">🖨️</span>Impresora
-        </div>
+        <div class="peri-chip" id="chip-cpu" onclick="selPeri('CPU',this)">CPU / Chasis</div>
+        <div class="peri-chip" id="chip-monitor" onclick="selPeri('MONITOR',this)">Monitor</div>
+        <div class="peri-chip" id="chip-mouse" onclick="selPeri('MOUSE',this)">Mouse</div>
+        <div class="peri-chip" id="chip-teclado" onclick="selPeri('TECLADO',this)">Teclado</div>
+        <div class="peri-chip" id="chip-impresora" onclick="selPeri('IMPRESORA',this)">Impresora</div>
       </div>
       <input type="hidden" id="p-tipo" value="">
     </div>
 
     <!-- Fotos + OCR -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">📷</span>Fotos del Periférico y Etiquetas</div>
+      <div class="card-header">Registro Fotográfico y Lectura de Etiquetas</div>
       <div class="foto-row">
         <div class="foto-zone" id="p-zone-eq">
           <input type="file" id="p-foto-eq" accept="image/*" capture="environment"
                  onchange="prevFoto(this,'p-prev-eq','p-zone-eq','p-icon-eq')">
           <img class="fz-prev" id="p-prev-eq" alt="">
-          <div class="fz-icon" id="p-icon-eq">📷</div>
+          <div class="fz-svg" id="p-icon-eq">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
           <div class="fz-label">Foto General</div>
           <div class="fz-hint">Toca para abrir cámara</div>
         </div>
@@ -578,7 +568,9 @@
           <input type="file" id="p-foto-et" accept="image/*" capture="environment"
                  onchange="prevFoto(this,'p-prev-et','p-zone-et','p-icon-et'); runOCR('p','bien')">
           <img class="fz-prev" id="p-prev-et" alt="">
-          <div class="fz-icon" id="p-icon-et">🏷️</div>
+          <div class="fz-svg" id="p-icon-et">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          </div>
           <div class="fz-label" id="p-lbl-foto-et">Placa / Bien IESS <span class="ocr-badge">OCR</span></div>
           <div class="fz-hint" id="p-hint-et">Código EI- / IM- / Placa</div>
         </div>
@@ -586,29 +578,31 @@
           <input type="file" id="p-foto-aux" accept="image/*" capture="environment"
                  onchange="prevFoto(this,'p-prev-aux','p-zone-aux','p-icon-aux'); runOCR('p','aux')">
           <img class="fz-prev" id="p-prev-aux" alt="">
-          <div class="fz-icon" id="p-icon-aux">🔢</div>
+          <div class="fz-svg" id="p-icon-aux">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M21 5v14"/></svg>
+          </div>
           <div class="fz-label" id="p-lbl-foto-aux">Cód. Auxiliar <span class="ocr-badge">OCR</span></div>
           <div class="fz-hint" id="p-hint-aux">Etiqueta de barras</div>
         </div>
       </div>
       <div class="ocr-box">
         <div class="ocr-hdr">
-          <span class="ocr-title" id="p-ocr-title">🤖 Agente IA de Visión / OCR</span>
+          <span class="ocr-title" id="p-ocr-title">Reconocimiento Automático de Etiquetas (IA)</span>
           <div style="display:flex;gap:6px">
-            <button class="ocr-btn" onclick="runOCR('p','bien')">🔄 Re-analizar</button>
+            <button class="ocr-btn" onclick="runOCR('p','bien')">Re-analizar imagen</button>
           </div>
         </div>
         <div class="ocr-text" id="p-ocr-text">Toma foto de la Placa del Bien IESS o de la etiqueta de Código Auxiliar...</div>
         <div class="ocr-bar"><div class="ocr-fill" id="p-ocr-fill"></div></div>
         <div class="ocr-st" id="p-ocr-st"></div>
 
-        <div class="fields-grid" style="margin-top:14px;background:#f0f7ff;padding:12px;border-radius:12px;border:1.5px solid #bfdbfe">
+        <div class="fields-grid" style="margin-top:14px;background:#f0f9ff;padding:12px;border-radius:12px;border:1px solid #bae6fd">
           <div class="field-group">
-            <label style="color:#1a73e8;font-weight:800">🏷️ Código del Bien IESS (Placa)</label>
+            <label style="color:#0369a1;font-weight:700">Código del Bien IESS (Placa)</label>
             <input type="text" id="p-codigo-bien" placeholder="Ej: EI-0141" style="font-weight:700">
           </div>
           <div class="field-group">
-            <label style="color:#1a73e8;font-weight:800">🔢 Código Auxiliar (Etiqueta de Barras)</label>
+            <label style="color:#0369a1;font-weight:700">Código Auxiliar (Etiqueta de Barras)</label>
             <input type="text" id="p-codigo-aux" placeholder="Ej: 27004610003867" style="font-weight:700">
           </div>
         </div>
@@ -617,7 +611,7 @@
 
     <!-- Datos del periférico -->
     <div class="card">
-      <div class="card-header"><span class="ch-icon">📝</span>Datos Técnicos</div>
+      <div class="card-header">Datos Técnicos del Componente</div>
       <div class="fields-grid">
         <div class="field-group">
           <label>Marca</label>
@@ -638,22 +632,22 @@
       </div>
       <div class="slabel">Estado</div>
       <div class="estado-pills">
-        <div class="estado-pill sel-bueno" onclick="selEstado('p','Bueno',this)">✅ Bueno</div>
-        <div class="estado-pill" onclick="selEstado('p','Regular',this)">⚠️ Regular</div>
-        <div class="estado-pill" onclick="selEstado('p','Malo',this)">❌ Malo</div>
+        <div class="estado-pill sel-bueno" onclick="selEstado('p','Bueno',this)"><span class="status-dot dot-green"></span> Bueno</div>
+        <div class="estado-pill" onclick="selEstado('p','Regular',this)"><span class="status-dot dot-amber"></span> Regular</div>
+        <div class="estado-pill" onclick="selEstado('p','Malo',this)"><span class="status-dot dot-red"></span> Malo</div>
       </div>
       <input type="hidden" id="p-estado" value="Bueno">
     </div>
 
-    <button class="btn-save" id="btn-save-peri" onclick="guardar('periferico')">💾 Guardar Componente / CPU en Google Sheets</button>
+    <button class="btn-save" id="btn-save-peri" onclick="guardar('periferico')">Guardar Componente en Google Sheets</button>
   </div>
 </div>
 
 <!-- ══════════ INVENTARIO ══════════ -->
 <div id="page-inv" class="page">
   <div class="inv-hdr">
-    <h2>📋 Inventario en Google Sheets</h2>
-    <button class="btn-ref" onclick="loadInv()">🔄 Actualizar</button>
+    <h2>Inventario Institucional de Activos</h2>
+    <button class="btn-ref" onclick="loadInv()">Actualizar datos</button>
   </div>
   <div class="table-card">
     <div class="tw">
@@ -1136,21 +1130,21 @@ function verificarCoincidenciaC1() {
     if (fHidden) fHidden.value = match.fila;
     if (banner) {
       banner.style.display = 'block';
-      banner.innerHTML = `🔄 <strong>¡Equipo ya registrado en el inventario (Fila ${match.fila})!</strong><br>
-        💻 ${match.marca || ''} ${match.modelo || ''} · S/N: <strong>${match.serie || 'S/S'}</strong> · Cód. Bien: <strong>${match.codigo_bien || ''}</strong><br>
-        👤 Custodio: <strong>${match.responsable || 'Sin custodio'}</strong><br>
-        <span style="font-size:12px;color:#1b5e20;display:block;margin-top:4px">✅ Al guardar, se <strong>completarán sus fotos y datos técnicos</strong> en esta misma fila (sin duplicar).</span>`;
+      banner.innerHTML = `<strong>Equipo identificado en inventario (Fila ${match.fila})</strong><br>
+        ${match.marca || ''} ${match.modelo || ''} · S/N: <strong>${match.serie || 'S/S'}</strong> · Cód. Bien: <strong>${match.codigo_bien || ''}</strong><br>
+        Custodio actual: <strong>${match.responsable || 'Sin custodio'}</strong><br>
+        <span style="font-size:12px;color:#065f46;display:block;margin-top:4px">Al guardar, se completarán las fotografías y datos técnicos en esta misma fila.</span>`;
     }
     if (btn) {
-      btn.innerHTML = `💾 Completar Información (Fila ${match.fila}) en Google Sheets`;
-      btn.style.background = 'linear-gradient(135deg,#1565c0,#0d47a1)';
+      btn.innerHTML = `Completar Información en Google Sheets (Fila ${match.fila})`;
+      btn.style.background = 'linear-gradient(135deg,#0284c7,#0369a1)';
     }
   } else {
     if (fHidden) fHidden.value = '';
     if (banner) banner.style.display = 'none';
     if (btn) {
-      btn.innerHTML = '💾 Guardar Computador / CPU en Google Sheets';
-      btn.style.background = 'linear-gradient(135deg,#34a853,#1b5e20)';
+      btn.innerHTML = 'Guardar Computador / CPU en Google Sheets';
+      btn.style.background = 'linear-gradient(135deg,#0284c7,#0369a1)';
     }
   }
 }
@@ -1235,7 +1229,7 @@ async function guardar(mod) {
   const btnOriginal = btn ? btn.innerHTML : '';
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '⏳ Optimizando y guardando...';
+    btn.innerHTML = 'Guardando en Google Sheets...';
   }
 
   try {
