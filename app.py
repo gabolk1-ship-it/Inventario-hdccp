@@ -144,10 +144,10 @@ def tipo_prefix(tipo: str) -> str:
     return "CPU"
 
 def img(url: str) -> str:
-    """Envuelve la URL de una foto en la fórmula =IMAGE() para vista previa en Google Sheets."""
+    """Envuelve la URL de una foto en la fórmula =IMAGE() para vista previa en Google Sheets (locale ES)."""
     if url and url.startswith("http"):
         url_escaped = url.replace('"', '%22')
-        return f'=IMAGE("{url_escaped}",4,150,200)'
+        return f'=IMAGE("{url_escaped}")'
     return ""
 
 FOTO_COLS = {
