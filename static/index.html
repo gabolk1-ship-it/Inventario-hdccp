@@ -275,7 +275,7 @@
 <body>
 
 <header>
-  <div class="brand"><span>📦</span>Inventario IESS <span style="background:#34a853;color:white;font-size:10px;padding:2px 7px;border-radius:12px;margin-left:4px;font-weight:700">v3.6</span></div>
+  <div class="brand"><span>📦</span>Inventario IESS <span style="background:#34a853;color:white;font-size:10px;padding:2px 7px;border-radius:12px;margin-left:4px;font-weight:700">v3.7</span></div>
   <div class="nav-tabs">
     <button class="active" onclick="showPage('reg',this)">📝 Registrar</button>
     <button onclick="showPage('inv',this)">📋 Inventario</button>
@@ -385,7 +385,7 @@
         </div>
         <div class="field-group">
           <label>Número de Serie (S/N)</label>
-          <input type="text" id="c1-serie" placeholder="Desde BAT o etiqueta">
+          <input type="text" id="c1-serie" placeholder="Desde BAT o etiqueta" oninput="verificarCoincidenciaC1()">
         </div>
         <div class="field-group">
           <label>Sistema Operativo</label>
@@ -472,11 +472,11 @@
         <div class="fields-grid" style="margin-top:14px;background:#f0f7ff;padding:12px;border-radius:12px;border:1.5px solid #bfdbfe">
           <div class="field-group">
             <label style="color:#1a73e8;font-weight:800">🏷️ Código del Bien IESS (Placa)</label>
-            <input type="text" id="c1-codigo-bien" placeholder="Ej: IM-0511 C.C.Q.A.H.D." style="font-weight:700">
+            <input type="text" id="c1-codigo-bien" placeholder="Ej: IM-0511 C.C.Q.A.H.D." style="font-weight:700" oninput="verificarCoincidenciaC1()">
           </div>
           <div class="field-group">
             <label style="color:#1a73e8;font-weight:800">🔢 Código Auxiliar (Etiqueta de Barras)</label>
-            <input type="text" id="c1-codigo-aux" placeholder="Ej: 27038980000661" style="font-weight:700">
+            <input type="text" id="c1-codigo-aux" placeholder="Ej: 27038980000661" style="font-weight:700" oninput="verificarCoincidenciaC1()">
           </div>
         </div>
       </div>
@@ -502,9 +502,12 @@
         <div class="estado-pill" onclick="selEstado('c1','Malo',this)">❌ Malo</div>
       </div>
       <input type="hidden" id="c1-estado" value="Bueno">
+      <input type="hidden" id="c1-fila" value="">
     </div>
 
-    <button class="btn-save" onclick="guardar('completo')">💾 Guardar Computador / CPU en Google Sheets</button>
+    <div id="c1-match-banner" style="display:none;padding:12px;background:#e8f5e9;border:1.5px solid #81c784;border-radius:12px;color:#1b5e20;font-size:13px;margin:10px 0;font-weight:600;box-shadow:0 2px 8px rgba(46,125,50,.15)"></div>
+
+    <button class="btn-save" id="btn-save-c1" onclick="guardar('completo')">💾 Guardar Computador / CPU en Google Sheets</button>
   </div>
 
   <!-- ════ MÓDULO 2: PERIFÉRICO ════ -->
@@ -1100,6 +1103,54 @@ function setCampoConIA(id, val) {
   el.value = val;
   el.classList.add('ia-highlight');
   setTimeout(() => el.classList.remove('ia-highlight'), 1800);
+  if (id.startsWith('c1-')) {
+    verificarCoincidenciaC1();
+  }
+}
+
+function verificarCoincidenciaC1() {
+  const codBien = (document.getElementById('c1-codigo-bien')?.value || '').trim().toUpperCase();
+  const serieEq = (document.getElementById('c1-serie')?.value || '').trim().toUpperCase();
+  const codAux  = (document.getElementById('c1-codigo-aux')?.value || '').trim().toUpperCase();
+
+  const banner = document.getElementById('c1-match-banner');
+  const btn    = document.getElementById('btn-save-c1');
+  const fHidden= document.getElementById('c1-fila');
+
+  let match = null;
+  if (Array.isArray(sheetData) && (codBien || serieEq || codAux)) {
+    for (const r of sheetData) {
+      const b = (r.codigo_bien || '').trim().toUpperCase();
+      const s = (r.serie || '').trim().toUpperCase();
+      const a = (r.codigo_aux || '').trim().toUpperCase();
+
+      if (codBien && b && codBien === b) { match = r; break; }
+      if (serieEq && s && serieEq === s && serieEq.length > 3) { match = r; break; }
+      if (codAux && a && codAux === a && codAux.length > 5) { match = r; break; }
+    }
+  }
+
+  if (match && match.fila) {
+    if (fHidden) fHidden.value = match.fila;
+    if (banner) {
+      banner.style.display = 'block';
+      banner.innerHTML = `🔄 <strong>¡Equipo ya registrado en el inventario (Fila ${match.fila})!</strong><br>
+        💻 ${match.marca || ''} ${match.modelo || ''} · S/N: <strong>${match.serie || 'S/S'}</strong> · Cód. Bien: <strong>${match.codigo_bien || ''}</strong><br>
+        👤 Custodio: <strong>${match.responsable || 'Sin custodio'}</strong><br>
+        <span style="font-size:12px;color:#1b5e20;display:block;margin-top:4px">✅ Al guardar, se <strong>completarán sus fotos y datos técnicos</strong> en esta misma fila (sin duplicar).</span>`;
+    }
+    if (btn) {
+      btn.innerHTML = `💾 Completar Información (Fila ${match.fila}) en Google Sheets`;
+      btn.style.background = 'linear-gradient(135deg,#1565c0,#0d47a1)';
+    }
+  } else {
+    if (fHidden) fHidden.value = '';
+    if (banner) banner.style.display = 'none';
+    if (btn) {
+      btn.innerHTML = '💾 Guardar Computador / CPU en Google Sheets';
+      btn.style.background = 'linear-gradient(135deg,#34a853,#1b5e20)';
+    }
+  }
 }
 
 function parseOCR(pfx, texto) {
@@ -1215,6 +1266,9 @@ async function guardar(mod) {
       fd.append('estado',            g('c1-estado'));
       fd.append('ocr_raw',           document.getElementById('c1-ocr-text')?.textContent || '');
 
+      const f1 = document.getElementById('c1-fila')?.value;
+      if (f1) fd.append('fila', f1);
+
       const fe = document.getElementById('c1-foto-et').files[0];
       const fa = document.getElementById('c1-foto-aux')?.files[0];
       const fq = document.getElementById('c1-foto-eq').files[0];
@@ -1245,7 +1299,22 @@ async function guardar(mod) {
       fd.append('ciudad',          g('p-ciudad'));
       fd.append('estado',          g('p-estado'));
       fd.append('ocr_raw',         document.getElementById('p-ocr-text')?.textContent || '');
-      if (eqRec.fila) fd.append('fila', eqRec.fila);
+
+      if (eqRec.fila) {
+        fd.append('fila', eqRec.fila);
+      } else {
+        const pBien = (g('p-codigo-bien') || '').trim().toUpperCase();
+        const pSer  = (g('p-serie') || '').trim().toUpperCase();
+        const pAux  = (g('p-codigo-aux') || '').trim().toUpperCase();
+        if (Array.isArray(sheetData) && (pBien || pSer || pAux)) {
+          const matchP = sheetData.find(r =>
+            (pBien && (r.codigo_bien||'').trim().toUpperCase() === pBien) ||
+            (pSer  && (r.serie||'').trim().toUpperCase() === pSer && pSer.length > 3) ||
+            (pAux  && (r.codigo_aux||'').trim().toUpperCase() === pAux && pAux.length > 5)
+          );
+          if (matchP && matchP.fila) fd.append('fila', matchP.fila);
+        }
+      }
 
       const fe = document.getElementById('p-foto-et').files[0];
       const fa = document.getElementById('p-foto-aux')?.files[0];

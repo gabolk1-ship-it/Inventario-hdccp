@@ -45,38 +45,52 @@ def get_sheet():
     return sh.get_worksheet(0)
 
 # ─── Google Drive ──────────────────────────────────────────────────────────────
-DRIVE_FOLDER_ID = None   # Si quieres una carpeta específica en Drive, pon el ID aquí
+DRIVE_FOLDER_ID = os.environ.get("DRIVE_FOLDER_ID", "").strip() or None
 
 def subir_a_drive(contenido: bytes, nombre: str, mime: str = "image/jpeg") -> str:
     """
-    Sube un archivo a Google Drive y retorna la URL pública de visualización.
+    Sube un archivo a Google Drive mediante la API REST v3 y retorna la URL pública.
+    Requiere que la carpeta de destino esté compartida con la cuenta de servicio si no tiene cuota propia.
     """
-    from googleapiclient.discovery import build
-    from googleapiclient.http import MediaIoBaseUpload
+    import io, json, requests
+    import google.auth.transport.requests
 
-    creds   = get_google_creds()
-    service = build("drive", "v3", credentials=creds)
+    folder_id = os.environ.get("DRIVE_FOLDER_ID", "").strip() or DRIVE_FOLDER_ID
+    creds = get_google_creds()
+    auth_req = google.auth.transport.requests.Request()
+    creds.refresh(auth_req)
+    token = creds.token
 
-    file_meta = {"name": nombre}
-    if DRIVE_FOLDER_ID:
-        file_meta["parents"] = [DRIVE_FOLDER_ID]
+    meta = {"name": nombre}
+    if folder_id:
+        meta["parents"] = [folder_id]
 
-    media = MediaIoBaseUpload(io.BytesIO(contenido), mimetype=mime, resumable=False)
-    archivo = service.files().create(
-        body=file_meta,
-        media_body=media,
-        fields="id"
-    ).execute()
+    r_up = requests.post(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true",
+        headers={"Authorization": f"Bearer {token}"},
+        files={
+            "metadata": (None, json.dumps(meta), "application/json; charset=UTF-8"),
+            "file": (nombre, contenido, mime)
+        },
+        timeout=25
+    )
+    if r_up.status_code not in (200, 201):
+        raise Exception(f"Google Drive HTTP {r_up.status_code}: {r_up.text[:300]}")
 
-    file_id = archivo.get("id")
+    file_id = r_up.json().get("id")
 
-    # Hacer público
-    service.permissions().create(
-        fileId=file_id,
-        body={"type": "anyone", "role": "reader"}
-    ).execute()
+    # Hacer el archivo accesible para lectura
+    try:
+        requests.post(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions?supportsAllDrives=true",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json={"type": "anyone", "role": "reader"},
+            timeout=10
+        )
+    except Exception as ex_perm:
+        print(f"Aviso al asignar permisos en Drive: {ex_perm}")
 
-    return f"https://drive.google.com/thumbnail?id={file_id}&sz=w400"
+    return f"https://drive.google.com/thumbnail?id={file_id}&sz=w600"
 
 
 async def procesar_imagen(archivo: Optional[UploadFile]) -> Optional[str]:
@@ -116,28 +130,110 @@ FOTO_COLS = {
     "Impresora": ("Foto General Impresora", "Foto Etiqueta Impresora", "OCR Impresora"),
 }
 
-def escribir_sheets(data: dict) -> None:
+def escribir_sheets(data: dict) -> tuple[int, bool]:
     ws      = get_sheet()
     headers = ws.row_values(1)
-    fila_num = data.get("fila")
+    
+    fila_num = None
+    if data.get("fila"):
+        try:
+            fila_num = int(data.get("fila"))
+        except (ValueError, TypeError):
+            fila_num = None
 
-    # Si se especificó una fila existente (> 1), actualizamos esa fila sin borrar datos
-    if fila_num and isinstance(fila_num, int) and fila_num > 1:
-        valores_actuales = ws.row_values(fila_num)
-        fila = list(valores_actuales) + [""] * max(0, len(headers) - len(valores_actuales))
+    todas_filas = ws.get_all_values()
+
+    # Si no vino fila explícita, buscar inteligentemente en el inventario
+    # por Código del Bien (ej: IM-0831), Serie (ej: MXL7050PM4) o Código Auxiliar (ej: 4003600006707)
+    if not fila_num and len(todas_filas) > 1:
+        cod_bien = (data.get("codigo_bien") or "").strip().upper()
+        serie_eq = (data.get("serie") or "").strip().upper()
+        cod_aux  = (data.get("codigo_auxiliar") or "").strip().upper()
+
+        col_bien_i = col_idx(headers, "Código del bien IESS")
+        col_ser_i  = col_idx(headers, "Serie del equipo")
+        col_aux_i  = col_idx(headers, "Código Auxiliar (Unnamed: 1)")
+
+        # 1. Prioridad: Coincidencia doble (Código Bien Y Serie)
+        if cod_bien and serie_eq and len(serie_eq) > 3:
+            for num_f in range(len(todas_filas), 1, -1):
+                r = todas_filas[num_f - 1]
+                val_bien = r[col_bien_i].strip().upper() if col_bien_i is not None and col_bien_i < len(r) else ""
+                val_ser  = r[col_ser_i].strip().upper()  if col_ser_i is not None and col_ser_i < len(r) else ""
+                if val_bien == cod_bien and val_ser == serie_eq:
+                    fila_num = num_f
+                    break
+
+        # 2. Coincidencia por Código del Bien IESS (ej: IM-0831)
+        if not fila_num and cod_bien:
+            for num_f in range(len(todas_filas), 1, -1):
+                r = todas_filas[num_f - 1]
+                val_bien = r[col_bien_i].strip().upper() if col_bien_i is not None and col_bien_i < len(r) else ""
+                if val_bien == cod_bien:
+                    fila_num = num_f
+                    break
+
+        # 3. Coincidencia por Serie del equipo (ej: MXL7050PM4)
+        if not fila_num and serie_eq and len(serie_eq) > 3:
+            for num_f in range(len(todas_filas), 1, -1):
+                r = todas_filas[num_f - 1]
+                val_ser  = r[col_ser_i].strip().upper() if col_ser_i is not None and col_ser_i < len(r) else ""
+                if val_ser == serie_eq:
+                    fila_num = num_f
+                    break
+
+        # 4. Coincidencia por Código Auxiliar (ej: 4003600006707)
+        if not fila_num and cod_aux and len(cod_aux) > 5:
+            for num_f in range(len(todas_filas), 1, -1):
+                r = todas_filas[num_f - 1]
+                val_aux  = r[col_aux_i].strip().upper() if col_aux_i is not None and col_aux_i < len(r) else ""
+                if val_aux == cod_aux:
+                    fila_num = num_f
+                    break
+
+    # Si encontramos o recibimos una fila existente (> 1), completamos esa fila sin duplicar
+    if fila_num and fila_num > 1:
+        if fila_num <= len(todas_filas):
+            valores_actuales = list(todas_filas[fila_num - 1])
+        else:
+            valores_actuales = ws.row_values(fila_num)
+
+        fila = valores_actuales + [""] * max(0, len(headers) - len(valores_actuales))
 
         def sc(col, val):
             i = col_idx(headers, col)
             if i is not None and val:
                 fila[i] = str(val)
 
-        if data.get("codigo_bien"):     sc("Código del bien IESS", data["codigo_bien"])
-        if data.get("codigo_auxiliar"): sc("Código Auxiliar (Unnamed: 1)", data["codigo_auxiliar"])
-        if data.get("marca"):           sc("Marca del equipo", data["marca"])
-        if data.get("modelo"):          sc("Modelo del equipo", data["modelo"])
-        if data.get("serie"):           sc("Serie del equipo", data["serie"])
-        if data.get("ciudad"):          sc("Ciudad", data["ciudad"])
-        if data.get("estado"):          sc("Operativo", "SI" if data["estado"] == "Bueno" else "NO")
+        # Solo actualizar los campos que traen información nueva sin borrar especificaciones previas
+        if data.get("codigo_bien"):       sc("Código del bien IESS", data["codigo_bien"])
+        if data.get("codigo_auxiliar"):   sc("Código Auxiliar (Unnamed: 1)", data["codigo_auxiliar"])
+        if data.get("marca"):             sc("Marca del equipo", data["marca"])
+        if data.get("modelo"):            sc("Modelo del equipo", data["modelo"])
+        if data.get("serie"):             sc("Serie del equipo", data["serie"])
+        if data.get("sistema_operativo"): sc("Sistema Operativo", data["sistema_operativo"])
+        if data.get("ram"):               sc("Memoria RAM", data["ram"])
+        if data.get("procesador"):        sc("Procesador", data["procesador"])
+        if data.get("disco_tam"):         sc("Tamaño del Disco", data["disco_tam"])
+        if data.get("disco_unidad"):      sc("Unidad Disco", data["disco_unidad"])
+        if data.get("hostname"):          sc("Nombre completo del equipo (hostname)", data["hostname"])
+        if data.get("ip"):                sc("Dirección IP", data["ip"])
+        if data.get("mac"):               sc("MAC Address", data["mac"])
+        if data.get("dependencia"):       sc("Dependencia/Edificio", data["dependencia"])
+        if data.get("ubicacion"):         sc("Ubicación / Area Funcional", data["ubicacion"])
+        if data.get("responsable"):       sc("Nombre del Custodio", data["responsable"])
+        if data.get("cedula_custodio"):   sc("Cédula Custodio", data["cedula_custodio"])
+        if data.get("ciudad"):            sc("Ciudad", data["ciudad"])
+        if data.get("estado"):            sc("Operativo", "SI" if data["estado"] == "Bueno" else "NO")
+
+        # Marcar tipo si corresponde
+        tipo_str = (data.get("tipo") or "").upper()
+        if "TODO EN UNO" in tipo_str or "AIO" in tipo_str:
+            sc("COMPUTADOR TODO EN UNO", "1")
+        elif "PORTÁTIL" in tipo_str or "PORTATIL" in tipo_str:
+            sc("COMPUTADOR PORTÁTIL", "1")
+        elif "ESCRITORIO" in tipo_str or "CPU" in tipo_str:
+            sc("COMPUTADOR DE ESCRITORIO", "1")
 
         prefix = tipo_prefix(data.get("tipo", ""))
         if prefix in FOTO_COLS:
@@ -147,9 +243,9 @@ def escribir_sheets(data: dict) -> None:
             if data.get("ocr_raw"):       sc(c_ocr, data["ocr_raw"])
 
         ws.update([fila], f"A{fila_num}", value_input_option="USER_ENTERED")
-        return
+        return fila_num, True
 
-    # Si es registro nuevo, creamos fila y append_row
+    # Si NO existe, es registro nuevo: append_row
     fila = [""] * len(headers)
 
     def sc(col, val):
@@ -199,6 +295,8 @@ def escribir_sheets(data: dict) -> None:
         sc(c_ocr, data.get("ocr_raw", ""))
 
     ws.append_row(fila, value_input_option="USER_ENTERED")
+    nueva_fila = len(todas_filas) + 1
+    return nueva_fila, False
 
 
 def leer_sheets() -> list:
@@ -334,14 +432,20 @@ async def crear_registro(
     )
 
     try:
-        escribir_sheets(data)
+        fila_guardada, fue_actualizado = escribir_sheets(data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error Google Sheets: {e}")
 
-    msg = f"✅ Datos y fotos de {tipo} actualizados en fila {fila}" if fila else f"✅ {tipo} guardado correctamente en Google Sheets"
+    if fue_actualizado:
+        msg = f"✅ Información y fotos de {tipo} completadas con éxito en la fila {fila_guardada}"
+    else:
+        msg = f"✅ {tipo} registrado como nuevo equipo en fila {fila_guardada}"
+
     return {
         "ok": True,
         "id_unico": id_unico,
+        "fila": fila_guardada,
+        "actualizado": fue_actualizado,
         "foto_equipo": url_equipo,
         "foto_etiqueta": url_etiqueta,
         "foto_auxiliar": url_auxiliar,
@@ -390,6 +494,9 @@ def test_conexion():
         resultado["sheets_error"]     = str(e)
 
     # 3 — ¿Puede subir a Drive?
+    folder_id_env = os.environ.get("DRIVE_FOLDER_ID", "").strip() or DRIVE_FOLDER_ID
+    resultado["drive_folder_id_configurado"] = bool(folder_id_env)
+    resultado["drive_folder_id"] = folder_id_env or "No configurado"
     try:
         url_d = subir_a_drive(b"test", "test.txt", "text/plain")
         resultado["drive_ok"] = True
@@ -397,6 +504,8 @@ def test_conexion():
     except Exception as ex_d:
         resultado["drive_ok"] = False
         resultado["drive_error"] = str(ex_d)
+        if "storageQuotaExceeded" in str(ex_d) or not folder_id_env:
+            resultado["drive_solucion"] = "Crea una carpeta en Google Drive, compártela como Editor con 'inventario-app@inventario-506717.iam.gserviceaccount.com' y pon su ID en la variable DRIVE_FOLDER_ID en Vercel."
 
     return resultado
 
