@@ -291,6 +291,7 @@ def test_conexion():
         except Exception as e:
             resultado["creds_json_ok"]  = False
             resultado["json_error"]     = str(e)
+    resultado["gemini_key_presente"] = bool(os.environ.get("GEMINI_API_KEY"))
     # 2 — ¿Puede conectar con Sheets?
     try:
         ws = get_sheet()
@@ -301,6 +302,113 @@ def test_conexion():
         resultado["sheets_conectado"] = False
         resultado["sheets_error"]     = str(e)
     return resultado
+
+
+@app.post("/api/ia-ocr", summary="Agente IA de Visión (Gemini Flash)")
+async def ia_ocr(
+    imagen: UploadFile = File(...),
+    tipo_bien: Optional[str] = Form(None),
+    gemini_key: Optional[str] = Form(None)
+):
+    """
+    Agente inteligente de reconocimiento visual de etiquetas técnicas IESS.
+    Utiliza Gemini 2.0 Flash / 1.5 Flash para extraer Código IESS, Código Auxiliar,
+    Marca, Modelo, Número de Serie, MAC y Tipo de bien con alta precisión.
+    """
+    import requests
+    key = gemini_key or os.environ.get("GEMINI_API_KEY")
+    if not key or not key.strip():
+        return {
+            "success": False,
+            "necesita_key": True,
+            "mensaje": "Se requiere GEMINI_API_KEY para activar el Agente de Visión IA."
+        }
+
+    try:
+        contenido = await imagen.read()
+        b64_img = base64.b64encode(contenido).decode("utf-8")
+        mime = imagen.content_type or "image/jpeg"
+
+        prompt = f"""Eres un perito técnico experto en inventario de TI y activos fijos del IESS (Instituto Ecuatoriano de Seguridad Social).
+Analiza detalladamente esta fotografía de una etiqueta técnica, código de barras, placa de activo fijo o chasis ({tipo_bien or 'equipo informático / periférico'}).
+
+Tu objetivo es leer y estructurar con extrema exactitud los identificadores técnicos.
+Responde ÚNICAMENTE un JSON válido sin texto adicional con esta estructura exacta:
+{{
+  "codigo_bien": "",
+  "codigo_auxiliar": "",
+  "marca": "",
+  "modelo": "",
+  "serie": "",
+  "tipo": "",
+  "mac": "",
+  "observaciones": "",
+  "texto_leido": ""
+}}
+
+Reglas de extracción:
+- "codigo_bien": Código institucional IESS visible (ej: IM-0511, EI-0141, etc.). Si no aparece, deja "".
+- "codigo_auxiliar": Código numérico auxiliar o código de barras de 10-14 dígitos (ej: 27004610003867). Si no aparece, deja "".
+- "marca": Marca del fabricante (HP, Dell, Lenovo, Logitech, Epson, Samsung, etc.).
+- "modelo": Modelo comercial o número de modelo exacto.
+- "serie": Número de serie, Serial Number, S/N, Service Tag o N/S. Cuidado crítico: no confundir O con 0, I con 1, 8 con B.
+- "tipo": Tipo de bien si es evidente (COMPUTADOR ESCRITORIO, PORTATIL, MONITOR, TECLADO, MOUSE, IMPRESORA).
+- "mac": Dirección MAC física de red si está impresa (ej: 00:1A:2B:3C:4D:5E).
+- "texto_leido": Todo el texto relevante que logres transcribir de la etiqueta.
+"""
+
+        modelos = ["gemini-2.0-flash", "gemini-1.5-flash"]
+        ultimo_error = ""
+
+        for mod in modelos:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent?key={key.strip()}"
+                payload = {
+                    "contents": [{
+                        "parts": [
+                            {"text": prompt},
+                            {
+                                "inline_data": {
+                                    "mime_type": mime,
+                                    "data": b64_img
+                                }
+                            }
+                        ]
+                    }],
+                    "generationConfig": {
+                        "temperature": 0.1,
+                        "response_mime_type": "application/json"
+                    }
+                }
+                resp = requests.post(url, json=payload, timeout=25)
+                if resp.status_code == 200:
+                    data_json = resp.json()
+                    cands = data_json.get("candidates", [])
+                    if cands:
+                        raw_text = cands[0]["content"]["parts"][0]["text"]
+                        parsed = json.loads(raw_text)
+                        return {
+                            "success": True,
+                            "motor": f"Agente IA ({mod})",
+                            "datos": parsed
+                        }
+                else:
+                    ultimo_error = f"{resp.status_code} - {resp.text[:200]}"
+            except Exception as ex_m:
+                ultimo_error = str(ex_m)
+                continue
+
+        return {
+            "success": False,
+            "error": f"Error conectando con Gemini Vision: {ultimo_error}"
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error procesando imagen con IA: {str(e)}"
+        }
+
 
 
 @app.get("/api/inventario")

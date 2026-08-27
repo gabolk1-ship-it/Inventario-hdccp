@@ -45,17 +45,29 @@
     .card-header .ch-icon{font-size:22px}
 
     /* ── Fields ── */
-    .fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;min-width:0}
+    .fields-grid > *{min-width:0;max-width:100%}
     .fields-grid.cols3{grid-template-columns:1fr 1fr 1fr}
     .full{grid-column:1/-1}
-    .field-group{display:flex;flex-direction:column;gap:4px}
+    .field-group{display:flex;flex-direction:column;gap:4px;min-width:0;width:100%;max-width:100%}
     .field-group label{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.4px}
-    .field-group input,.field-group select{padding:9px 11px;border:1.5px solid #e0e0e0;
-      border-radius:9px;font-size:13px;transition:border-color .2s,box-shadow .2s;background:white}
+    .field-group input,.field-group select{padding:9px 11px;border:1.5px solid #d1d5db;
+      border-radius:9px;font-size:13px;transition:border-color .2s,box-shadow .2s;background:white;
+      width:100%;max-width:100%;box-sizing:border-box;min-width:0}
+    .field-group select{
+      text-overflow:ellipsis;white-space:nowrap;overflow:hidden;
+      appearance:none;-webkit-appearance:none;cursor:pointer;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right 10px center;padding-right:32px;
+    }
     .field-group input:focus,.field-group select:focus{outline:none;border-color:#1a73e8;
       box-shadow:0 0 0 3px rgba(26,115,232,.12)}
     .field-group input.auto{background:#fffde7;border-color:#f9a825}
     .field-group input[readonly]{background:#f5f5f5;color:#666}
+    .ia-badge{display:inline-flex;align-items:center;gap:4px;background:#e8f5e9;color:#1b5e20;
+      font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px}
+    @keyframes iaPulse{0%{background-color:#dcfce7;border-color:#22c55e}100%{background-color:white;border-color:#22c55e}}
+    .ia-highlight{animation:iaPulse 1.6s ease-out;border-color:#22c55e !important}
 
     /* ── Periféricos chips ── */
     .peri-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px}
@@ -189,12 +201,16 @@
       .peri-chip .pi{font-size:32px;margin-bottom:6px}
 
       /* Campos: 1 columna, inputs grandes */
-      .fields-grid{grid-template-columns:1fr}
-      .fields-grid.cols3{grid-template-columns:1fr}
+      .fields-grid{grid-template-columns:1fr;min-width:0;width:100%}
+      .fields-grid.cols3{grid-template-columns:1fr;min-width:0;width:100%}
+      .fields-grid > *{min-width:0;max-width:100%}
+      .field-group{min-width:0;width:100%;max-width:100%}
       .field-group input,
       .field-group select{
-        padding:12px 13px;font-size:15px;border-radius:10px
+        padding:12px 13px;font-size:15px;border-radius:10px;
+        width:100%;max-width:100%;min-width:0;box-sizing:border-box;
       }
+      .field-group select{padding-right:34px;background-position:right 12px center}
       .field-group label{font-size:12px}
 
       /* Fotos: 1 columna, zonas grandes para toque */
@@ -239,6 +255,20 @@
       .peri-chip .pi{font-size:28px}
       .btn-save{font-size:15px;padding:15px}
     }
+
+    /* ── Modal Config Agente IA ── */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;
+      align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px)}
+    .modal-overlay.open{display:flex}
+    .modal-card{background:white;border-radius:16px;max-width:480px;width:100%;padding:22px;
+      box-shadow:0 12px 36px rgba(0,0,0,.35);box-sizing:border-box}
+    .modal-title{font-size:17px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:8px;color:#1a1a2e}
+    .modal-body{font-size:13px;color:#4b5563;line-height:1.5;margin-bottom:14px}
+    .modal-input{width:100%;padding:11px;border:1.5px solid #d1d5db;border-radius:10px;font-size:13px;box-sizing:border-box}
+    .modal-input:focus{outline:none;border-color:#1a73e8;box-shadow:0 0 0 3px rgba(26,115,232,.15)}
+    .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+    .btn-modal-cancel{background:#f3f4f6;color:#374151;border:none;padding:10px 16px;border-radius:10px;font-weight:700;cursor:pointer}
+    .btn-modal-save{background:#1a73e8;color:white;border:none;padding:10px 18px;border-radius:10px;font-weight:700;cursor:pointer}
   </style>
 </head>
 <body>
@@ -284,12 +314,13 @@
     <div class="card">
       <div class="card-header"><span class="ch-icon">👤</span>Seleccionar Custodio</div>
       <div class="fields-grid">
-        <div class="field-group">
-          <label>Custodio</label>
+        <div class="field-group full">
+          <label>Custodio <span style="font-weight:400;color:#666">(escribe para filtrar rápido)</span></label>
+          <input type="text" id="c1-filtro-custodio" placeholder="🔍 Escribe nombre o cédula para filtrar..."
+                 oninput="filtrarCustodios(this.value)" style="margin-bottom:5px">
           <select id="c1-custodio" onchange="custodioChanged('c1')">
-            <option value="">-- Cargando usuarios... --</option>
+            <option value="">-- Cargando custodios... --</option>
           </select>
-        </div>
         <div class="field-group">
           <label>Cédula</label>
           <input type="text" id="c1-cedula" placeholder="Auto desde Sheet">
@@ -397,10 +428,13 @@
       </div>
       <div class="ocr-box">
         <div class="ocr-hdr">
-          <span class="ocr-title">🔍 Texto OCR etiqueta</span>
-          <button class="ocr-btn" onclick="runOCR('c1')">🔄 Re-analizar</button>
+          <span class="ocr-title" id="c1-ocr-title">🤖 Agente IA de Visión / OCR</span>
+          <div style="display:flex;gap:6px">
+            <button class="ocr-btn" onclick="abrirModalIA()" title="Configurar clave Gemini">⚙️ Clave IA</button>
+            <button class="ocr-btn" onclick="runOCR('c1')">🔄 Re-analizar</button>
+          </div>
         </div>
-        <div class="ocr-text" id="c1-ocr-text">Captura la etiqueta del equipo...</div>
+        <div class="ocr-text" id="c1-ocr-text">Captura la etiqueta del equipo para análisis inteligente...</div>
         <div class="ocr-bar"><div class="ocr-fill" id="c1-ocr-fill"></div></div>
         <div class="ocr-st" id="c1-ocr-st"></div>
       </div>
@@ -445,8 +479,10 @@
     <!-- Equipo al que pertenece -->
     <div class="card">
       <div class="card-header"><span class="ch-icon">🖥️</span>Equipo al que pertenece</div>
-      <div class="field-group">
-        <label>Selecciona el computador</label>
+      <div class="field-group full">
+        <label>Selecciona el computador <span style="font-weight:400;color:#666">(escribe para filtrar)</span></label>
+        <input type="text" id="p-filtro-equipo" placeholder="🔍 Escribe marca, serie o custodio..."
+               oninput="filtrarEquipos(this.value)" style="margin-bottom:5px">
         <select id="p-equipo">
           <option value="">-- Cargando equipos... --</option>
         </select>
@@ -506,10 +542,13 @@
       </div>
       <div class="ocr-box">
         <div class="ocr-hdr">
-          <span class="ocr-title">🔍 Texto OCR etiqueta</span>
-          <button class="ocr-btn" onclick="runOCR('p')">🔄 Re-analizar</button>
+          <span class="ocr-title" id="p-ocr-title">🤖 Agente IA de Visión / OCR</span>
+          <div style="display:flex;gap:6px">
+            <button class="ocr-btn" onclick="abrirModalIA()" title="Configurar clave Gemini">⚙️ Clave IA</button>
+            <button class="ocr-btn" onclick="runOCR('p')">🔄 Re-analizar</button>
+          </div>
         </div>
-        <div class="ocr-text" id="p-ocr-text">Captura la etiqueta del periférico...</div>
+        <div class="ocr-text" id="p-ocr-text">Captura la etiqueta del periférico para análisis inteligente...</div>
         <div class="ocr-bar"><div class="ocr-fill" id="p-ocr-fill"></div></div>
         <div class="ocr-st" id="p-ocr-st"></div>
       </div>
@@ -629,38 +668,82 @@ async function cargarSheetData() {
   }
 }
 
+let listaCustodios = [];
+let listaEquipos = [];
+
 function poblarCustodios(data) {
-  const sel = document.getElementById('c1-custodio');
   const vistos = new Set();
-  const opts = ['<option value="">-- Selecciona custodio --</option>'];
+  listaCustodios = [];
   data.forEach(r => {
-    const key = (r.cedula || '') + '|' + (r.responsable || '');
-    if (r.responsable && !vistos.has(key)) {
+    const resp = (r.responsable || '').trim();
+    const ced = (r.cedula || '').trim();
+    const key = ced + '|' + resp;
+    if (resp && !vistos.has(key)) {
       vistos.add(key);
-      opts.push(`<option value="${key}">${r.responsable}${r.cedula ? ' — '+r.cedula : ''}</option>`);
+      listaCustodios.push({ key, responsable: resp, cedula: ced });
+    }
+  });
+  renderCustodios('');
+}
+
+function renderCustodios(filtro) {
+  const sel = document.getElementById('c1-custodio');
+  const term = (filtro || '').toLowerCase().trim();
+  const opts = ['<option value="">-- Selecciona custodio (' + listaCustodios.length + ') --</option>'];
+  listaCustodios.forEach(c => {
+    if (!term || c.responsable.toLowerCase().includes(term) || c.cedula.includes(term)) {
+      const label = `${c.responsable}${c.cedula ? ' ('+c.cedula+')' : ''}`;
+      opts.push(`<option value="${c.key}">${label}</option>`);
     }
   });
   sel.innerHTML = opts.join('');
 }
 
+function filtrarCustodios(term) {
+  renderCustodios(term);
+}
+
 function poblarEquipos(data) {
-  const sel = document.getElementById('p-equipo');
-  const opts = ['<option value="">-- Selecciona equipo --</option>'];
+  listaEquipos = [];
   data.forEach((r, i) => {
     const tipo = (r.tipo||'').toUpperCase();
     if (tipo.includes('CPU') || tipo.includes('ESCRITORIO') || tipo.includes('PORTAT') ||
         tipo.includes('UNO') || tipo.includes('TODO') || tipo.includes('LAPTOP') || tipo.includes('SERVIDOR')) {
-      const label = [r.marca, r.modelo, r.serie, r.responsable].filter(Boolean).join(' | ');
-      opts.push(`<option value="${i}">${label || 'Equipo #'+(i+1)}</option>`);
+      const marca = (r.marca || '').trim();
+      const modelo = (r.modelo || '').trim();
+      const serie = (r.serie || '').trim();
+      const resp = (r.responsable || '').trim();
+      const cod = (r.codigo_bien || '').trim();
+      listaEquipos.push({ idx: i, tipo: r.tipo, marca, modelo, serie, responsable: resp, codigo_bien: cod });
     }
   });
-  sel.innerHTML = opts.join('');
-  sel.addEventListener('change', () => {
+  renderEquipos('');
+  const sel = document.getElementById('p-equipo');
+  sel.onchange = () => {
+    if (sel.value === '') return;
     const r = sheetData[+sel.value];
     if (!r) return;
     document.getElementById('p-custodio-display').value = r.responsable || '';
     document.getElementById('p-ubicacion-display').value = r.dependencia || r.ubicacion || '';
+  };
+}
+
+function renderEquipos(filtro) {
+  const sel = document.getElementById('p-equipo');
+  const term = (filtro || '').toLowerCase().trim();
+  const opts = ['<option value="">-- Selecciona computador (' + listaEquipos.length + ') --</option>'];
+  listaEquipos.forEach(eq => {
+    const fullSearch = `${eq.marca} ${eq.modelo} ${eq.serie} ${eq.responsable} ${eq.codigo_bien}`.toLowerCase();
+    if (!term || fullSearch.includes(term)) {
+      const label = `💻 ${eq.marca} ${eq.modelo} · S/N: ${eq.serie || 'S/S'} (${eq.responsable || 'Sin custodio'})`;
+      opts.push(`<option value="${eq.idx}">${label}</option>`);
+    }
   });
+  sel.innerHTML = opts.join('');
+}
+
+function filtrarEquipos(term) {
+  renderEquipos(term);
 }
 
 function custodioChanged(pfx) {
@@ -718,30 +801,97 @@ function prevFoto(input, prevId, zoneId, iconId) {
   r.readAsDataURL(file);
 }
 
-/* ══ OCR ══ */
-function runOCR(pfx) {
+/* ══ OCR Inteligente con Agente IA (Gemini) y Fallback Tesseract ══ */
+async function runOCR(pfx) {
   const etId  = pfx === 'c1' ? 'c1-foto-et' : 'p-foto-et';
   const input = document.getElementById(etId);
   if (!input.files.length) return;
-  const txt  = document.getElementById(`${pfx === 'c1' ? 'c1' : 'p'}-ocr-text`);
-  const fill = document.getElementById(`${pfx === 'c1' ? 'c1' : 'p'}-ocr-fill`);
-  const st   = document.getElementById(`${pfx === 'c1' ? 'c1' : 'p'}-ocr-st`);
-  txt.textContent = 'Leyendo etiqueta…'; fill.style.width = '0%';
+  const file = input.files[0];
+  const prefix = pfx === 'c1' ? 'c1' : 'p';
+  const txt  = document.getElementById(`${prefix}-ocr-text`);
+  const fill = document.getElementById(`${prefix}-ocr-fill`);
+  const st   = document.getElementById(`${prefix}-ocr-st`);
 
-  Tesseract.recognize(input.files[0], 'eng', {
+  fill.style.width = '25%';
+  txt.textContent = '🤖 Agente IA analizando foto de la etiqueta...';
+  st.textContent   = 'Enviando imagen a Gemini Vision...';
+
+  // 1. Intentar con Agente IA en Backend
+  try {
+    const formData = new FormData();
+    formData.append('imagen', file);
+    const tipoVal = pfx === 'c1' ? (document.getElementById('c1-tipo')?.value || 'COMPUTADOR') : (periActivo || 'PERIFÉRICO');
+    formData.append('tipo_bien', tipoVal);
+    const localKey = localStorage.getItem('gemini_api_key') || '';
+    if (localKey) formData.append('gemini_key', localKey);
+
+    fill.style.width = '55%';
+    const resp = await fetch(`${API}/api/ia-ocr`, { method: 'POST', body: formData });
+    const res = await resp.json();
+
+    if (res.success && res.datos) {
+      fill.style.width = '100%';
+      st.textContent = `✅ ${res.motor || 'Agente IA'}: Identificación completa`;
+      const d = res.datos;
+
+      const lineas = [
+        `🤖 ${res.motor || 'Agente IA'}:`,
+        d.marca ? `• Marca: ${d.marca}` : null,
+        d.modelo ? `• Modelo: ${d.modelo}` : null,
+        d.serie ? `• Serie (S/N): ${d.serie}` : null,
+        d.codigo_bien ? `• Código IESS: ${d.codigo_bien}` : null,
+        d.codigo_auxiliar ? `• Cód. Auxiliar: ${d.codigo_auxiliar}` : null,
+        d.mac ? `• MAC: ${d.mac}` : null,
+        d.tipo ? `• Tipo: ${d.tipo}` : null,
+        d.observaciones ? `• Info: ${d.observaciones}` : null,
+      ].filter(Boolean);
+
+      txt.textContent = lineas.join('\n') || d.texto_leido || 'Datos identificados con éxito.';
+
+      if (d.serie) setCampoConIA(`${prefix}-serie`, d.serie);
+      if (d.marca) setCampoConIA(`${prefix}-marca`, d.marca);
+      if (d.modelo) setCampoConIA(`${prefix}-modelo`, d.modelo);
+      if (d.codigo_bien) setCampoConIA(`${prefix}-codigo-bien`, d.codigo_bien);
+      if (d.codigo_auxiliar) setCampoConIA(`${prefix}-codigo-aux`, d.codigo_auxiliar);
+      if (pfx === 'c1') {
+        if (d.mac) setCampoConIA('c1-mac', d.mac);
+        if (d.tipo && !document.getElementById('c1-tipo').value) setCampoConIA('c1-tipo', d.tipo);
+      }
+      toast('✨ Agente IA completó los datos automáticamente', 'ok');
+      return;
+    } else if (res.necesita_key) {
+      st.textContent = 'ℹ️ Agente IA requiere clave. Ejecutando OCR local (Tesseract)...';
+    }
+  } catch (err) {
+    console.warn('Fallo en Agente IA, usando OCR local:', err);
+  }
+
+  // 2. Fallback local con Tesseract
+  txt.textContent = 'Leyendo con OCR local (Tesseract)...';
+  fill.style.width = '35%';
+
+  Tesseract.recognize(file, 'eng', {
     logger: m => {
       if (m.status === 'recognizing text') {
         fill.style.width = Math.round((m.progress||0)*100)+'%';
-        st.textContent   = `Procesando: ${Math.round((m.progress||0)*100)}%`;
+        st.textContent   = `OCR local: ${Math.round((m.progress||0)*100)}%`;
       }
     }
   }).then(({data:{text}}) => {
     const t = text.trim();
-    txt.textContent = t || 'Sin texto detectado.';
+    txt.textContent = t ? `📄 Texto OCR detectado:\n${t}\n\n💡 Tip: Usa el botón "⚙️ Clave IA" para activar el Agente Gemini con lectura 100% exacta.` : '⚠️ Sin texto detectado en la imagen.';
     fill.style.width = '100%';
-    st.textContent   = t ? '✅ Completando campos…' : '⚠️ Sin texto';
+    st.textContent   = t ? '✅ OCR completado' : '⚠️ Sin texto';
     if (t) parseOCR(pfx, t);
-  }).catch(e => { txt.textContent = 'Error: '+e; });
+  }).catch(e => { txt.textContent = 'Error OCR: '+e; });
+}
+
+function setCampoConIA(id, val) {
+  const el = document.getElementById(id);
+  if (!el || !val) return;
+  el.value = val;
+  el.classList.add('ia-highlight');
+  setTimeout(() => el.classList.remove('ia-highlight'), 1800);
 }
 
 function parseOCR(pfx, texto) {
@@ -930,8 +1080,62 @@ function toast(msg, tipo='ok') {
   setTimeout(()=>el.className='toast',3500);
 }
 
+/* ══ Modal Agente IA ══ */
+function abrirModalIA() {
+  const modal = document.getElementById('modal-ia');
+  const inp = document.getElementById('input-gemini-key');
+  inp.value = localStorage.getItem('gemini_api_key') || '';
+  modal.classList.add('open');
+}
+
+function cerrarModalIA() {
+  document.getElementById('modal-ia').classList.remove('open');
+}
+
+function guardarClaveIA() {
+  const key = document.getElementById('input-gemini-key').value.trim();
+  if (key) {
+    localStorage.setItem('gemini_api_key', key);
+    toast('✅ Clave de Agente IA guardada', 'ok');
+  } else {
+    localStorage.removeItem('gemini_api_key');
+    toast('ℹ️ Clave eliminada (se usará la de Vercel si existe)', 'ok');
+  }
+  cerrarModalIA();
+}
+
 /* ══ Init ══ */
 cargarSheetData();
 </script>
+
+<!-- Modal Configurar Clave Gemini IA -->
+<div class="modal-overlay" id="modal-ia" onclick="if(event.target===this)cerrarModalIA()">
+  <div class="modal-card">
+    <div class="modal-title">🤖 Agente de Visión IA (Gemini Flash)</div>
+    <div class="modal-body">
+      El Agente de IA lee fotos de placas y etiquetas IESS, reconociendo <strong>códigos institucionales, series (S/N), códigos de barra, marcas y modelos</strong> con máxima precisión.
+      <br><br>
+      Puedes obtener tu <strong>API Key 100% gratuita</strong> de Google en 1 minuto:
+      <br>
+      <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#1a73e8;font-weight:700;display:inline-block;margin-top:6px;text-decoration:none">
+        👉 Obtener API Key gratis en Google AI Studio ↗
+      </a>
+      <div style="margin-top:14px">
+        <label style="font-weight:700;font-size:12px;color:#333;display:block;margin-bottom:4px">
+          Pega tu API Key de Gemini:
+        </label>
+        <input type="password" id="input-gemini-key" class="modal-input" placeholder="AIzaSy...">
+      </div>
+      <div style="font-size:11px;color:#6b7280;margin-top:8px;line-height:1.4">
+        🔒 Se guarda únicamente en tu navegador. También puedes agregarla como variable de entorno <code>GEMINI_API_KEY</code> en Vercel para que todos los chicos la tengan activa automáticamente.
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="cerrarModalIA()">Cancelar</button>
+      <button class="btn-modal-save" onclick="guardarClaveIA()">Guardar Clave</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
