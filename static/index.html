@@ -653,8 +653,11 @@ async function cargarSheetData() {
     banner.innerHTML = `<span style="animation:spin 1s linear infinite;display:inline-block">⏳</span> Conectando con Google Sheets...`;
   }
   try {
-    const res = await fetch(`${API}/api/inventario`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await fetch(`${API}/api/inventario?_t=${Date.now()}`);
+    if (!res.ok) {
+      const errTxt = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}${errTxt ? ': ' + errTxt.slice(0, 100) : ''}`);
+    }
     const data = await res.json();
     if (!Array.isArray(data)) throw new Error(data.detail || data.error || 'Respuesta inválida');
 
@@ -668,13 +671,13 @@ async function cargarSheetData() {
     if (ct) ct.textContent = `${data.length} equipos en Sheet`;
   } catch(e) {
     console.warn('No se pudo cargar Sheet:', e);
-    // Reintento automático 1 vez tras 2.5 segundos (útil en arranques en frío de Vercel)
+    // Reintento automático 1 vez tras 2 segundos (útil en arranques en frío de Vercel)
     if (reintentosSheet === 0) {
       reintentosSheet++;
       if (banner) {
         banner.innerHTML = `<span style="animation:spin 1s linear infinite;display:inline-block">⏳</span> Reconectando con Google Sheets...`;
       }
-      setTimeout(cargarSheetData, 2500);
+      setTimeout(cargarSheetData, 2000);
       return;
     }
 
@@ -682,10 +685,14 @@ async function cargarSheetData() {
       banner.style.display = 'flex';
       banner.style.background = '#fff3e0';
       banner.style.color = '#e65100';
-      banner.innerHTML = `<span>⚠️ No se pudo conectar con Google Sheets (${e.message || 'Revisar conexión'}). 
-        <button onclick="reintentosSheet=0;cargarSheetData()" style="background:white;color:#e65100;border:1px solid #ffb74d;
-        font-weight:700;padding:5px 14px;border-radius:8px;cursor:pointer;margin-left:8px;box-shadow:0 1px 3px rgba(0,0,0,.1)">
-        🔄 Reintentar</button></span>`;
+      banner.innerHTML = `<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;justify-content:center;width:100%">
+        <span>⚠️ No se pudo conectar con Google Sheets: <strong>${e.message || 'Error de red'}</strong></span>
+        <button onclick="reintentosSheet=0;cargarSheetData()" style="background:white;color:#e65100;border:1.5px solid #ff9800;
+        font-weight:700;padding:5px 14px;border-radius:8px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+        🔄 Reintentar</button>
+        <a href="/api/test" target="_blank" style="background:#e8f0fe;color:#1a73e8;text-decoration:none;
+        font-weight:700;padding:5px 12px;border-radius:8px;font-size:12px">🔍 Ver Diagnóstico</a>
+      </div>`;
     }
   }
 }
@@ -1046,7 +1053,7 @@ async function loadInv() {
   const tb = document.getElementById('inv-tbody');
   tb.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:28px;color:#aaa">Cargando desde Google Sheets...</td></tr>';
   try {
-    const data = await (await fetch(`${API}/api/inventario`)).json();
+    const data = await (await fetch(`${API}/api/inventario?_t=${Date.now()}`)).json();
     sheetData  = data;
     if (!data.length) {
       tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:28px;color:#aaa">Sin registros</td></tr>';

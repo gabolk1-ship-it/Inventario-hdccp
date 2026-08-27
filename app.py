@@ -5,7 +5,7 @@ import io
 import base64
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
@@ -217,7 +217,14 @@ if os.path.isdir(static_dir):
 @app.get("/", include_in_schema=False)
 def root():
     index = os.path.join(static_dir, "index.html")
-    return FileResponse(index)
+    return FileResponse(
+        index,
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
 
 
 @app.post("/api/inventario")
@@ -412,10 +419,16 @@ Reglas de extracción:
 
 
 @app.get("/api/inventario")
-
 def listar():
     try:
-        return leer_sheets()
+        datos = leer_sheets()
+        return JSONResponse(
+            content=datos,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache"
+            }
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error leyendo Sheets: {e}")
 
