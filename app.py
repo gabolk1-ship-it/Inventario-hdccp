@@ -394,7 +394,7 @@ Reglas de extracción:
 - "texto_leido": Todo el texto relevante que logres transcribir de la etiqueta.
 """
 
-        modelos = ["gemini-2.0-flash", "gemini-1.5-flash"]
+        modelos = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"]
         ultimo_error = ""
 
         for mod in modelos:
