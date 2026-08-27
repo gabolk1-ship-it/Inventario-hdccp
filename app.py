@@ -143,6 +143,13 @@ def tipo_prefix(tipo: str) -> str:
     if "uno" in t: return "CPU"
     return "CPU"
 
+def img(url: str) -> str:
+    """Envuelve la URL de una foto en la fórmula =IMAGE() para vista previa en Google Sheets."""
+    if url and url.startswith("http"):
+        url_escaped = url.replace('"', '%22')
+        return f'=IMAGE("{url_escaped}",4,150,200)'
+    return ""
+
 FOTO_COLS = {
     "CPU":       ("Foto General CPU",       "Foto Etiqueta CPU",       "OCR CPU"),
     "Monitor":   ("Foto General Monitor",   "Foto Etiqueta Monitor",   "OCR Monitor"),
@@ -281,11 +288,11 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
             prefix = tipo_prefix(tipo_str)
             if prefix in FOTO_COLS:
                 c_eq, c_et, c_ocr = FOTO_COLS[prefix]
-                if data.get("foto_equipo"):   sc(c_eq, data["foto_equipo"])
-                if data.get("foto_etiqueta"): sc(c_et, data["foto_etiqueta"])
+                if data.get("foto_equipo"):   sc(c_eq, img(data["foto_equipo"]))
+                if data.get("foto_etiqueta"): sc(c_et, img(data["foto_etiqueta"]))
                 if data.get("ocr_raw"):       sc(c_ocr, data["ocr_raw"])
         else:
-            # Periférico: Si actualiza un registro dedicado o asociado, guardar en sus campos
+            # Periférico: guardar en sus campos correspondientes
             if data.get("codigo_bien"):       sc("Código del bien IESS", data["codigo_bien"])
             if data.get("codigo_auxiliar"):   sc("Código Auxiliar (Unnamed: 1)", data["codigo_auxiliar"])
             if data.get("marca"):             sc("Marca del equipo", data["marca"])
@@ -295,8 +302,8 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
             prefix = tipo_prefix(tipo_str)
             if prefix in FOTO_COLS:
                 c_eq, c_et, c_ocr = FOTO_COLS[prefix]
-                if data.get("foto_equipo"):   sc(c_eq, data["foto_equipo"])
-                if data.get("foto_etiqueta"): sc(c_et, data["foto_etiqueta"])
+                if data.get("foto_equipo"):   sc(c_eq, img(data["foto_equipo"]))
+                if data.get("foto_etiqueta"): sc(c_et, img(data["foto_etiqueta"]))
                 if data.get("ocr_raw"):       sc(c_ocr, data["ocr_raw"])
 
         col_end = gspread.utils.rowcol_to_a1(1, len(fila)).rstrip("0123456789")
@@ -348,8 +355,8 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
     prefix = tipo_prefix(data.get("tipo", ""))
     if prefix in FOTO_COLS:
         c_eq, c_et, c_ocr = FOTO_COLS[prefix]
-        sc(c_eq,  data.get("foto_equipo", ""))
-        sc(c_et,  data.get("foto_etiqueta", ""))
+        sc(c_eq,  img(data.get("foto_equipo", "")))
+        sc(c_et,  img(data.get("foto_etiqueta", "")))
         sc(c_ocr, data.get("ocr_raw", ""))
 
     ws.append_row(fila, value_input_option="USER_ENTERED")
