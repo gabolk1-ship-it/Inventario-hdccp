@@ -16,9 +16,10 @@
     .brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700}
     .brand span{font-size:24px}
     .nav-tabs{display:flex;gap:6px;flex-wrap:wrap}
-    .nav-tabs button{background:rgba(255,255,255,.12);border:none;color:white;
-      padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;transition:background .2s}
-    .nav-tabs button.active,.nav-tabs button:hover{background:rgba(255,255,255,.28)}
+    .nav-tabs button{background:rgba(255,255,255,.15);border:none;color:white;
+      padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;
+      cursor:pointer;transition:all .2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+    .nav-tabs button.active{background:white;color:#1a73e8}
 
     /* ── Pages ── */
     .page{display:none;padding:20px;max-width:860px;margin:0 auto}
@@ -28,7 +29,7 @@
     .module-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
     .module-card{background:white;border-radius:16px;padding:24px 20px;text-align:center;
       cursor:pointer;box-shadow:0 3px 14px rgba(0,0,0,.1);border:3px solid transparent;
-      transition:all .2s}
+      transition:all .2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
     .module-card:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.15)}
     .module-card.active{border-color:var(--c);background:var(--bg)}
     .module-card .mc-icon{font-size:44px;margin-bottom:10px}
@@ -274,7 +275,7 @@
 <body>
 
 <header>
-  <div class="brand"><span>📦</span>Inventario IESS</div>
+  <div class="brand"><span>📦</span>Inventario IESS <span style="background:#34a853;color:white;font-size:10px;padding:2px 7px;border-radius:12px;margin-left:4px;font-weight:700">v3.2</span></div>
   <div class="nav-tabs">
     <button class="active" onclick="showPage('reg',this)">📝 Registrar</button>
     <button onclick="showPage('inv',this)">📋 Inventario</button>
@@ -619,35 +620,56 @@
 <div class="toast" id="toast"></div>
 
 <script>
+window.onerror = function(msg, url, lineNo, colNo, error) {
+  console.error("DEBUG JS:", msg, "line:", lineNo);
+  const d = document.getElementById('global-js-error') || document.createElement('div');
+  d.id = 'global-js-error';
+  d.style = 'background:#ea4335;color:white;padding:12px 16px;font-size:13px;font-weight:700;position:fixed;top:0;left:0;right:0;z-index:999999;text-align:center;box-shadow:0 3px 10px rgba(0,0,0,.3);display:flex;justify-content:space-between;align-items:center';
+  d.innerHTML = `<span>⚠️ Error JS: ${msg} (Línea ${lineNo})</span><button onclick="this.parentElement.remove()" style="margin-left:12px;background:white;color:#ea4335;border:none;padding:3px 8px;border-radius:4px;cursor:pointer;font-weight:bold">✕</button>`;
+  document.body.prepend(d);
+};
+window.onunhandledrejection = function(e) {
+  console.warn("Unhandled Promise:", e.reason);
+};
+
 const API = window.location.origin;
 let sheetData = [];   // cache de los datos del sheet
 let modActivo = '';
 
 /* ══ Páginas ══ */
 function showPage(name, btn) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const targetPage = document.getElementById('page-' + name);
-  if (targetPage) targetPage.classList.add('active');
-  document.querySelectorAll('.nav-tabs button').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  window.scrollTo({top: 0, behavior: 'smooth'});
-  if (name === 'inv') loadInv();
+  try {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const targetPage = document.getElementById('page-' + name);
+    if (targetPage) targetPage.classList.add('active');
+    document.querySelectorAll('.nav-tabs button').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    if (name === 'inv') loadInv();
+  } catch(err) {
+    alert("Error cambiando de vista: " + err.message);
+  }
 }
 
 /* ══ Módulo selector ══ */
 function selectMod(mod, card) {
-  document.querySelectorAll('.module-card').forEach(c => c.classList.remove('active'));
-  if (card) card.classList.add('active');
-  modActivo = mod;
-  const modComp = document.getElementById('mod-completo');
-  const modPeri = document.getElementById('mod-periferico');
-  if (modComp) modComp.style.display = mod === 'completo' ? 'block' : 'none';
-  if (modPeri) modPeri.style.display = mod === 'periferico' ? 'block' : 'none';
-  const targetId = mod === 'completo' ? 'mod-completo' : 'mod-periferico';
-  setTimeout(() => {
-    const el = document.getElementById(targetId);
-    if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
-  }, 100);
+  try {
+    document.querySelectorAll('.module-card').forEach(c => c.classList.remove('active'));
+    if (!card) card = document.querySelector('.mod-' + mod);
+    if (card) card.classList.add('active');
+    modActivo = mod;
+    const modComp = document.getElementById('mod-completo');
+    const modPeri = document.getElementById('mod-periferico');
+    if (modComp) modComp.style.display = mod === 'completo' ? 'block' : 'none';
+    if (modPeri) modPeri.style.display = mod === 'periferico' ? 'block' : 'none';
+    const targetId = mod === 'completo' ? 'mod-completo' : 'mod-periferico';
+    setTimeout(() => {
+      const el = document.getElementById(targetId);
+      if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }, 50);
+  } catch(err) {
+    alert("Error activando módulo: " + err.message);
+  }
 }
 
 /* ══ Cargar datos del Sheet al iniciar ══ */
