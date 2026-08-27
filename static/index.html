@@ -3,384 +3,494 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inventario Rápido</title>
+  <title>Inventario IESS</title>
   <script src="https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; color: #1a1a2e; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#eef2f7;color:#1a1a2e;min-height:100vh}
 
     /* ── Header ── */
-    header {
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      color: white; padding: 14px 24px;
-      display: flex; align-items: center; justify-content: space-between;
-      position: sticky; top: 0; z-index: 200;
-      box-shadow: 0 2px 12px rgba(0,0,0,.3);
-    }
-    .brand { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; }
-    .brand span { font-size: 26px; }
-    .nav-tabs { display: flex; gap: 6px; }
-    .nav-tabs button {
-      background: rgba(255,255,255,.12); border: none; color: white;
-      padding: 7px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;
-      cursor: pointer; transition: background .2s;
-    }
-    .nav-tabs button.active,
-    .nav-tabs button:hover { background: rgba(255,255,255,.28); }
+    header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:white;padding:14px 20px;
+      display:flex;align-items:center;justify-content:space-between;
+      position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+    .brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700}
+    .brand span{font-size:24px}
+    .nav-tabs{display:flex;gap:6px;flex-wrap:wrap}
+    .nav-tabs button{background:rgba(255,255,255,.12);border:none;color:white;
+      padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;transition:background .2s}
+    .nav-tabs button.active,.nav-tabs button:hover{background:rgba(255,255,255,.28)}
 
     /* ── Pages ── */
-    .page { display: none; }
-    .page.active { display: block; }
+    .page{display:none;padding:20px;max-width:860px;margin:0 auto}
+    .page.active{display:block}
 
-    /* ── Device cards ── */
-    .device-grid {
-      display: grid; grid-template-columns: repeat(5,1fr);
-      gap: 12px; padding: 24px 32px 0; max-width: 1100px; margin: 0 auto;
-    }
-    .device-card {
-      border-radius: 16px; padding: 20px 8px; text-align: center;
-      cursor: pointer; color: white; font-weight: 700; font-size: 13px;
-      box-shadow: 0 4px 14px rgba(0,0,0,.15);
-      transition: transform .18s, box-shadow .18s; user-select: none;
-    }
-    .device-card:hover  { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.2); }
-    .device-card.active { transform: translateY(-2px); outline: 4px solid white; outline-offset: 2px; }
-    .device-card .icon  { font-size: 36px; display: block; margin-bottom: 8px; }
-    .card-cpu       { background: linear-gradient(135deg,#1a73e8,#0d47a1); }
-    .card-monitor   { background: linear-gradient(135deg,#34a853,#1b5e20); }
-    .card-teclado   { background: linear-gradient(135deg,#f9a825,#e65100); }
-    .card-mouse     { background: linear-gradient(135deg,#9c27b0,#4a148c); }
-    .card-impresora { background: linear-gradient(135deg,#ea4335,#b71c1c); }
+    /* ── Module selector ── */
+    .module-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+    .module-card{background:white;border-radius:16px;padding:24px 20px;text-align:center;
+      cursor:pointer;box-shadow:0 3px 14px rgba(0,0,0,.1);border:3px solid transparent;
+      transition:all .2s}
+    .module-card:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.15)}
+    .module-card.active{border-color:var(--c);background:var(--bg)}
+    .module-card .mc-icon{font-size:44px;margin-bottom:10px}
+    .module-card h3{font-size:16px;margin-bottom:6px}
+    .module-card p{font-size:12px;color:#666;line-height:1.4}
+    .mod-completo{--c:#1a73e8;--bg:#f0f4ff}
+    .mod-periferico{--c:#34a853;--bg:#f0fdf4}
 
-    /* ── Form panel ── */
-    .form-panel { max-width: 1100px; margin: 20px auto 40px; padding: 0 32px; display: none; }
-    .form-panel.visible { display: block; }
-    .panel-inner { background: white; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,0,0,.1); overflow: hidden; }
-    .panel-banner { padding: 16px 24px; color: white; display: flex; align-items: center; gap: 12px; font-size: 19px; font-weight: 700; }
-    .panel-banner .icon { font-size: 28px; }
-    .panel-body { padding: 24px; }
+    /* ── Cards / sections ── */
+    .card{background:white;border-radius:14px;padding:20px;margin-bottom:16px;
+      box-shadow:0 2px 10px rgba(0,0,0,.08)}
+    .card-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;
+      font-size:15px;font-weight:700;color:#1a1a2e}
+    .card-header .ch-icon{font-size:22px}
 
-    /* ── Section labels ── */
-    .section-label {
-      font-size: 11px; font-weight: 800; text-transform: uppercase;
-      letter-spacing: 1px; color: #888; margin: 20px 0 10px;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .section-label::after { content:''; flex:1; height:1px; background:#e0e0e0; }
+    /* ── Fields ── */
+    .fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .fields-grid.cols3{grid-template-columns:1fr 1fr 1fr}
+    .full{grid-column:1/-1}
+    .field-group{display:flex;flex-direction:column;gap:4px}
+    .field-group label{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.4px}
+    .field-group input,.field-group select{padding:9px 11px;border:1.5px solid #e0e0e0;
+      border-radius:9px;font-size:13px;transition:border-color .2s,box-shadow .2s;background:white}
+    .field-group input:focus,.field-group select:focus{outline:none;border-color:#1a73e8;
+      box-shadow:0 0 0 3px rgba(26,115,232,.12)}
+    .field-group input.auto{background:#fffde7;border-color:#f9a825}
+    .field-group input[readonly]{background:#f5f5f5;color:#666}
+
+    /* ── Periféricos chips ── */
+    .peri-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px}
+    .peri-chip{border:2px solid #e0e0e0;border-radius:12px;padding:12px 6px;text-align:center;
+      cursor:pointer;font-size:12px;font-weight:700;transition:all .2s}
+    .peri-chip .pi{font-size:26px;display:block;margin-bottom:4px}
+    .peri-chip:hover{border-color:#888}
+    .peri-chip.sel-mon{border-color:#34a853;background:#f0fdf4;color:#1b5e20}
+    .peri-chip.sel-mou{border-color:#9c27b0;background:#faf4ff;color:#4a148c}
+    .peri-chip.sel-tec{border-color:#f9a825;background:#fffde7;color:#e65100}
+    .peri-chip.sel-imp{border-color:#ea4335;background:#fdf0ef;color:#b71c1c}
 
     /* ── Foto zones ── */
-    .foto-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .foto-zone {
-      border: 2px dashed #c5cae9; border-radius: 16px; padding: 14px;
-      text-align: center; cursor: pointer; position: relative;
-      transition: border-color .2s, background .2s;
-    }
-    .foto-zone:hover { border-color: #1a73e8; background: #f0f4ff; }
-    .foto-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-    .foto-zone .fz-icon  { font-size: 36px; margin-bottom: 6px; }
-    .foto-zone .fz-label { font-size: 13px; font-weight: 700; color: #333; }
-    .foto-zone .fz-hint  { font-size: 11px; color: #888; margin-top: 3px; }
-    .foto-zone img.fz-preview { width:100%; height:140px; object-fit:cover; border-radius:10px; display:none; margin-bottom:8px; }
-    .foto-zone.has-foto { border-style: solid; border-color: #34a853; }
-    .ocr-badge { display:inline-block; background:#1a73e8; color:white; font-size:10px; font-weight:800; padding:2px 7px; border-radius:10px; margin-left:5px; }
+    .foto-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .foto-zone{border:2px dashed #c5cae9;border-radius:14px;padding:14px;text-align:center;
+      cursor:pointer;position:relative;transition:border-color .2s,background .2s;min-height:130px;
+      display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .foto-zone:hover{border-color:#1a73e8;background:#f0f4ff}
+    .foto-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+    .foto-zone img.fz-prev{width:100%;height:120px;object-fit:cover;border-radius:10px;display:none;margin-bottom:6px}
+    .foto-zone.has-foto{border-style:solid;border-color:#34a853}
+    .fz-icon{font-size:32px;margin-bottom:6px}
+    .fz-label{font-size:12px;font-weight:700;color:#333}
+    .fz-hint{font-size:11px;color:#888;margin-top:3px}
+    .ocr-badge{display:inline-block;background:#1a73e8;color:white;font-size:9px;
+      font-weight:800;padding:2px 6px;border-radius:8px;margin-left:4px}
 
     /* ── OCR box ── */
-    .ocr-box { background:#f8f9ff; border:1px solid #c5cae9; border-radius:12px; padding:12px 14px; margin-bottom: 4px; }
-    .ocr-box-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
-    .ocr-box-title { font-weight:700; font-size:12px; color:#555; }
-    .ocr-rerun { background:none; border:1px solid #1a73e8; color:#1a73e8; border-radius:8px; padding:3px 10px; font-size:11px; cursor:pointer; font-weight:600; }
-    .ocr-rerun:hover { background:#1a73e8; color:white; }
-    .ocr-text { font-family:monospace; font-size:11px; color:#333; white-space:pre-wrap; word-break:break-all; max-height:70px; overflow-y:auto; }
-    .ocr-progress { height:3px; background:#e0e0e0; border-radius:2px; margin-top:6px; overflow:hidden; }
-    .ocr-progress-fill { height:100%; width:0%; background:#1a73e8; border-radius:2px; transition:width .3s; }
-    .ocr-status-text { font-size:10px; color:#888; margin-top:3px; }
+    .ocr-box{background:#f8f9ff;border:1px solid #c5cae9;border-radius:10px;padding:10px 13px;margin-top:12px}
+    .ocr-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+    .ocr-title{font-weight:700;font-size:11px;color:#555}
+    .ocr-btn{background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:7px;
+      padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600}
+    .ocr-btn:hover{background:#1a73e8;color:white}
+    .ocr-text{font-family:monospace;font-size:11px;color:#333;white-space:pre-wrap;
+      word-break:break-all;max-height:60px;overflow-y:auto}
+    .ocr-bar{height:3px;background:#e0e0e0;border-radius:2px;margin-top:6px;overflow:hidden}
+    .ocr-fill{height:100%;width:0%;background:#1a73e8;border-radius:2px;transition:width .3s}
+    .ocr-st{font-size:10px;color:#888;margin-top:3px}
 
-    /* ── Grid de campos ── */
-    .fields-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
-    .fields-grid.cols2 { grid-template-columns: repeat(2,1fr); }
-    .full { grid-column: 1/-1; }
-
-    .field-group { display:flex; flex-direction:column; gap:4px; }
-    .field-group label { font-size:11px; font-weight:700; color:#555; text-transform:uppercase; letter-spacing:.4px; }
-    .field-group input, .field-group select {
-      padding: 9px 11px; border: 1.5px solid #e0e0e0;
-      border-radius: 10px; font-size: 13px; transition: border-color .2s, box-shadow .2s;
-    }
-    .field-group input:focus, .field-group select:focus {
-      outline:none; border-color:#1a73e8; box-shadow:0 0 0 3px rgba(26,115,232,.12);
-    }
-    .field-group input.autofilled { background:#fffde7; border-color:#f9a825; }
+    /* ── BAT upload ── */
+    .bat-zone{border:2px dashed #1a73e8;border-radius:12px;padding:18px;text-align:center;
+      cursor:pointer;position:relative;background:#f0f4ff;transition:background .2s}
+    .bat-zone:hover{background:#e3eaff}
+    .bat-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+    .bat-zone .bat-icon{font-size:36px;margin-bottom:6px}
+    .bat-zone .bat-label{font-size:14px;font-weight:700;color:#1a73e8}
+    .bat-zone .bat-hint{font-size:11px;color:#555;margin-top:4px}
+    .bat-ok{display:none;background:#e8f5e9;border-radius:10px;padding:10px 14px;
+      font-size:12px;color:#1b5e20;font-weight:600;margin-top:8px}
 
     /* ── Estado pills ── */
-    .estado-pills { display:flex; gap:8px; }
-    .estado-pill {
-      flex:1; padding:9px 4px; text-align:center;
-      border:2px solid #e0e0e0; border-radius:10px;
-      font-size:13px; font-weight:700; cursor:pointer; transition:all .2s;
-    }
-    .sel-bueno   { background:#e8f5e9; border-color:#34a853; color:#1b5e20; }
-    .sel-regular { background:#fff8e1; border-color:#f9a825; color:#e65100; }
-    .sel-malo    { background:#fce4ec; border-color:#ea4335; color:#b71c1c; }
+    .estado-pills{display:flex;gap:8px}
+    .estado-pill{flex:1;padding:9px 4px;text-align:center;border:2px solid #e0e0e0;
+      border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}
+    .sel-bueno{background:#e8f5e9;border-color:#34a853;color:#1b5e20}
+    .sel-regular{background:#fff8e1;border-color:#f9a825;color:#e65100}
+    .sel-malo{background:#fce4ec;border-color:#ea4335;color:#b71c1c}
 
-    /* ── Guardar ── */
-    .btn-save {
-      width:100%; padding:15px; margin-top:20px;
-      background: linear-gradient(135deg,#34a853,#1b5e20);
-      color:white; border:none; border-radius:12px;
-      font-size:16px; font-weight:700; cursor:pointer;
-      display:flex; align-items:center; justify-content:center; gap:8px;
-      box-shadow:0 4px 14px rgba(52,168,83,.35); transition:filter .2s, transform .15s;
-    }
-    .btn-save:hover  { filter:brightness(108%); transform:translateY(-1px); }
-    .btn-save:active { transform:translateY(0); }
-
-    /* ── Toast ── */
-    .toast {
-      position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
-      padding:11px 28px; border-radius:24px; font-size:14px; font-weight:600;
-      z-index:999; opacity:0; transition:opacity .3s; pointer-events:none;
-      box-shadow:0 4px 20px rgba(0,0,0,.22);
-    }
-    .toast.show { opacity:1; }
-    .toast.ok  { background:#34a853; color:white; }
-    .toast.err { background:#ea4335; color:white; }
+    /* ── Save button ── */
+    .btn-save{width:100%;padding:14px;background:linear-gradient(135deg,#34a853,#1b5e20);
+      color:white;border:none;border-radius:12px;font-size:16px;font-weight:700;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+      box-shadow:0 4px 14px rgba(52,168,83,.35);transition:filter .2s,transform .15s;margin-top:4px}
+    .btn-save:hover{filter:brightness(108%);transform:translateY(-1px)}
 
     /* ── Inventario ── */
-    .inv-page { max-width:1200px; margin:0 auto; padding:24px 32px; }
-    .inv-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
-    .inv-header h2 { font-size:21px; }
-    .btn-refresh { background:#1a73e8; color:white; border:none; padding:9px 18px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; }
-    .btn-refresh:hover { filter:brightness(90%); }
-    .table-card { background:white; border-radius:16px; box-shadow:0 2px 14px rgba(0,0,0,.08); overflow:hidden; }
-    .table-wrap { overflow-x:auto; }
-    table { width:100%; border-collapse:collapse; font-size:12px; }
-    thead th { background:#1a1a2e; color:white; padding:11px 9px; text-align:left; white-space:nowrap; }
-    tbody td { padding:9px; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
-    tbody tr:last-child td { border-bottom:none; }
-    tbody tr:hover td { background:#f8f9ff; }
-    .thumb { width:42px; height:42px; object-fit:cover; border-radius:7px; }
-    .badge { display:inline-block; padding:3px 9px; border-radius:12px; font-size:10px; font-weight:800; }
-    .badge-si  { background:#e8f5e9; color:#1b5e20; }
-    .badge-no  { background:#fce4ec; color:#b71c1c; }
-    .type-chip { display:inline-block; padding:3px 9px; border-radius:12px; font-size:10px; font-weight:800; color:white; }
-    .tc-cpu         { background:#1a73e8; }
-    .tc-monitor     { background:#34a853; }
-    .tc-teclado     { background:#f9a825; color:#333; }
-    .tc-mouse       { background:#9c27b0; }
-    .tc-impresora   { background:#ea4335; }
-    .tc-escritorio  { background:#00897b; }
-    .tc-portatil    { background:#5c6bc0; }
-    .tc-todoenuno   { background:#ff7043; }
-    .btn-del { background:#fce4ec; color:#c62828; border:none; padding:5px 9px; border-radius:8px; cursor:pointer; font-size:14px; transition:background .2s; }
-    .btn-del:hover { background:#ea4335; color:white; }
+    .inv-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .inv-hdr h2{font-size:20px}
+    .btn-ref{background:#1a73e8;color:white;border:none;padding:8px 16px;
+      border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
+    .table-card{background:white;border-radius:14px;box-shadow:0 2px 14px rgba(0,0,0,.08);overflow:hidden}
+    .tw{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    thead th{background:#1a1a2e;color:white;padding:10px 8px;text-align:left;white-space:nowrap}
+    tbody td{padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+    tbody tr:last-child td{border-bottom:none}
+    tbody tr:hover td{background:#f8f9ff}
+    .thumb{width:38px;height:38px;object-fit:cover;border-radius:6px}
+    .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:800;color:white}
+    .chip-cpu{background:#1a73e8}.chip-monitor{background:#34a853}.chip-teclado{background:#f9a825;color:#333}
+    .chip-mouse{background:#9c27b0}.chip-impresora{background:#ea4335}
+    .chip-escritorio{background:#00897b}.chip-portatil{background:#5c6bc0}.chip-aio{background:#ff7043}
+    .badge-si{background:#e8f5e9;color:#1b5e20;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:800}
+    .badge-no{background:#fce4ec;color:#b71c1c;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:800}
+    .btn-del{background:#fce4ec;color:#c62828;border:none;padding:5px 8px;border-radius:7px;cursor:pointer;font-size:13px}
+    .btn-del:hover{background:#ea4335;color:white}
+
+    /* ── Toast ── */
+    .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+      padding:11px 26px;border-radius:22px;font-size:14px;font-weight:600;
+      z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.22)}
+    .toast.show{opacity:1}
+    .toast.ok{background:#34a853;color:white}
+    .toast.err{background:#ea4335;color:white}
+
+    /* ── Section label ── */
+    .slabel{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;
+      color:#888;margin:16px 0 10px;display:flex;align-items:center;gap:6px}
+    .slabel::after{content:'';flex:1;height:1px;background:#e0e0e0}
 
     /* ── Responsive ── */
-    @media(max-width:720px){
-      .device-grid { grid-template-columns:repeat(3,1fr); gap:8px; padding:14px 14px 0; }
-      .foto-row { grid-template-columns:1fr; }
-      .fields-grid { grid-template-columns:1fr 1fr; }
-      .form-panel,.inv-page { padding:0 12px; }
-      .inv-page { padding:14px 12px; }
-    }
-    @media(max-width:440px){
-      .device-grid { grid-template-columns:repeat(2,1fr); }
-      .fields-grid { grid-template-columns:1fr; }
+    @media(max-width:600px){
+      .module-grid{grid-template-columns:1fr}
+      .foto-row{grid-template-columns:1fr}
+      .fields-grid{grid-template-columns:1fr}
+      .fields-grid.cols3{grid-template-columns:1fr 1fr}
+      .peri-grid{grid-template-columns:repeat(2,1fr)}
+      .nav-tabs button{font-size:11px;padding:6px 10px}
     }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="brand"><span>📦</span> Inventario IESS</div>
+  <div class="brand"><span>📦</span>Inventario IESS</div>
   <div class="nav-tabs">
-    <button class="active" onclick="showPage('reg',this)">➕ Registrar</button>
-    <button onclick="showPage('inv',this)">📋 Ver Inventario</button>
+    <button class="active" onclick="showPage('reg',this)">📝 Registrar</button>
+    <button onclick="showPage('inv',this)">📋 Inventario</button>
   </div>
 </header>
 
-<!-- ════════════ REGISTRO ════════════ -->
+<!-- ══════════ REGISTRO ══════════ -->
 <div id="page-reg" class="page active">
 
-  <div class="device-grid">
-    <div class="device-card card-cpu"       onclick="selectDevice(this,'CPU','💻','linear-gradient(135deg,#1a73e8,#0d47a1)')"><span class="icon">💻</span>CPU / Torre</div>
-    <div class="device-card card-monitor"   onclick="selectDevice(this,'MONITOR','🖥️','linear-gradient(135deg,#34a853,#1b5e20)')"><span class="icon">🖥️</span>Monitor</div>
-    <div class="device-card card-teclado"   onclick="selectDevice(this,'TECLADO','⌨️','linear-gradient(135deg,#f9a825,#e65100)')"><span class="icon">⌨️</span>Teclado</div>
-    <div class="device-card card-mouse"     onclick="selectDevice(this,'MOUSE','🖱️','linear-gradient(135deg,#9c27b0,#4a148c)')"><span class="icon">🖱️</span>Mouse</div>
-    <div class="device-card card-impresora" onclick="selectDevice(this,'IMPRESORA','🖨️','linear-gradient(135deg,#ea4335,#b71c1c)')"><span class="icon">🖨️</span>Impresora</div>
+  <!-- Selector de módulo -->
+  <div class="module-grid">
+    <div class="module-card mod-completo" onclick="selectMod('completo',this)">
+      <div class="mc-icon">🖥️</div>
+      <h3>Registro Completo</h3>
+      <p>CPU, Laptop o All-in-One. Ejecuta el .bat en el equipo para auto-completar los datos técnicos.</p>
+    </div>
+    <div class="module-card mod-periferico" onclick="selectMod('periferico',this)">
+      <div class="mc-icon">🖱️</div>
+      <h3>Periférico / Complementar</h3>
+      <p>Monitor, Mouse, Teclado, Impresora. Usa la cámara y OCR para completar datos faltantes.</p>
+    </div>
   </div>
 
-  <div class="form-panel" id="form-panel">
-    <div class="panel-inner">
-      <div class="panel-banner" id="panel-banner">
-        <span class="icon" id="banner-icon">💻</span>
-        <span id="banner-title">Selecciona un equipo</span>
-      </div>
-      <div class="panel-body">
+  <!-- ════ MÓDULO 1: COMPLETO ════ -->
+  <div id="mod-completo" style="display:none">
 
-        <!-- ── FOTOS ── -->
-        <div class="section-label">📷 Fotos del equipo</div>
-        <div class="foto-row">
-          <div class="foto-zone" id="zone-equipo">
-            <input type="file" id="foto-equipo" accept="image/*" capture="environment"
-                   onchange="previewFoto(this,'prev-equipo','zone-equipo','fz-icon-equipo')">
-            <img class="fz-preview" id="prev-equipo" alt="Equipo">
-            <div class="fz-icon" id="fz-icon-equipo">📷</div>
-            <div class="fz-label">Foto del Equipo</div>
-            <div class="fz-hint">Toca para abrir la cámara</div>
-          </div>
-          <div class="foto-zone" id="zone-etiqueta">
-            <input type="file" id="foto-etiqueta" accept="image/*" capture="environment"
-                   onchange="previewFoto(this,'prev-etiqueta','zone-etiqueta','fz-icon-etiqueta'); ejecutarOCR()">
-            <img class="fz-preview" id="prev-etiqueta" alt="Etiqueta">
-            <div class="fz-icon" id="fz-icon-etiqueta">🏷️</div>
-            <div class="fz-label">Etiqueta <span class="ocr-badge">OCR AUTO</span></div>
-            <div class="fz-hint">El texto se leerá automáticamente</div>
-          </div>
+    <!-- Custodio -->
+    <div class="card">
+      <div class="card-header"><span class="ch-icon">👤</span>Seleccionar Custodio</div>
+      <div class="fields-grid">
+        <div class="field-group">
+          <label>Custodio</label>
+          <select id="c1-custodio" onchange="custodioChanged('c1')">
+            <option value="">-- Cargando usuarios... --</option>
+          </select>
         </div>
-
-        <!-- ── OCR ── -->
-        <div class="ocr-box" style="margin-top:14px">
-          <div class="ocr-box-header">
-            <span class="ocr-box-title">🔍 Texto detectado por OCR</span>
-            <button class="ocr-rerun" onclick="ejecutarOCR()">🔄 Re-analizar</button>
-          </div>
-          <div class="ocr-text" id="ocr-text">Toma la foto de la etiqueta para detectar texto automáticamente...</div>
-          <div class="ocr-progress"><div class="ocr-progress-fill" id="ocr-fill"></div></div>
-          <div class="ocr-status-text" id="ocr-status"></div>
+        <div class="field-group">
+          <label>Cédula</label>
+          <input type="text" id="c1-cedula" placeholder="Auto desde Sheet">
         </div>
-
-        <!-- ── IDENTIFICACIÓN ── -->
-        <div class="section-label">🏷️ Identificación del bien</div>
-        <div class="fields-grid">
-          <div class="field-group">
-            <label>Código del Bien IESS</label>
-            <input type="text" id="f-codigo_bien" placeholder="Ej: IM-0511 C.C.Q.A.H.D.">
-          </div>
-          <div class="field-group">
-            <label>Código Auxiliar</label>
-            <input type="text" id="f-codigo_auxiliar" placeholder="Ej: 27038980000661">
-          </div>
-          <div class="field-group">
-            <label>Tipo de Bien</label>
-            <input type="text" id="f-tipo_display" readonly style="background:#f5f5f5;color:#666">
-          </div>
+        <div class="field-group">
+          <label>Dependencia / Edificio</label>
+          <input type="text" id="c1-dependencia" placeholder="Ej: C.C.Q.A.HD. COTOCOLLAO">
         </div>
-
-        <!-- ── ESPECIFICACIONES ── -->
-        <div class="section-label">⚙️ Especificaciones técnicas</div>
-        <div class="fields-grid">
-          <div class="field-group">
-            <label>Marca</label>
-            <input type="text" id="f-marca" placeholder="Ej: Dell, HP, Lenovo…">
-          </div>
-          <div class="field-group">
-            <label>Modelo</label>
-            <input type="text" id="f-modelo" placeholder="Ej: OptiPlex 3050">
-          </div>
-          <div class="field-group">
-            <label>Número de Serie (S/N)</label>
-            <input type="text" id="f-serie" placeholder="Detectado por OCR…">
-          </div>
-          <div class="field-group">
-            <label>Sistema Operativo</label>
-            <input type="text" id="f-sistema_operativo" placeholder="Ej: Windows 11 Pro">
-          </div>
-          <div class="field-group">
-            <label>Memoria RAM</label>
-            <input type="text" id="f-ram" placeholder="Ej: 16 GB">
-          </div>
-          <div class="field-group full">
-            <label>Procesador</label>
-            <input type="text" id="f-procesador" placeholder="Ej: Intel Core i7-6700">
-          </div>
+        <div class="field-group">
+          <label>Área Funcional</label>
+          <input type="text" id="c1-ubicacion" placeholder="Ej: Rehabilitación">
         </div>
-
-        <!-- ── UBICACIÓN ── -->
-        <div class="section-label">📍 Ubicación</div>
-        <div class="fields-grid">
-          <div class="field-group">
-            <label>Dependencia / Edificio</label>
-            <input type="text" id="f-dependencia" placeholder="Ej: C.C.Q.A.HD. COTOCOLLAO">
-          </div>
-          <div class="field-group">
-            <label>Área Funcional</label>
-            <input type="text" id="f-ubicacion" placeholder="Ej: Rehabilitación">
-          </div>
-          <div class="field-group">
-            <label>Ciudad</label>
-            <input type="text" id="f-ciudad" value="QUITO">
-          </div>
-        </div>
-
-        <!-- ── CUSTODIO ── -->
-        <div class="section-label">👤 Custodio</div>
-        <div class="fields-grid cols2">
-          <div class="field-group">
-            <label>Cédula Custodio</label>
-            <input type="text" id="f-cedula_custodio" placeholder="Ej: 1713473534">
-          </div>
-          <div class="field-group">
-            <label>Nombre del Custodio</label>
-            <input type="text" id="f-responsable" placeholder="Apellidos y nombres">
-          </div>
-        </div>
-
-        <!-- ── RED ── -->
-        <div class="section-label">🌐 Red (opcional)</div>
-        <div class="fields-grid">
-          <div class="field-group">
-            <label>Dirección IP</label>
-            <input type="text" id="f-ip" placeholder="Ej: 172.16.86.13">
-          </div>
-          <div class="field-group">
-            <label>MAC Address</label>
-            <input type="text" id="f-mac" placeholder="Ej: DC:4A:3E:58:52:9F">
-          </div>
-          <div class="field-group">
-            <label>Hostname</label>
-            <input type="text" id="f-hostname" placeholder="Ej: PCUIOCOT085L">
-          </div>
-        </div>
-
-        <!-- ── ESTADO ── -->
-        <div class="section-label">✅ Estado del equipo</div>
-        <div class="estado-pills">
-          <div class="estado-pill sel-bueno"  onclick="selectEstado('Bueno',this)">✅ Bueno</div>
-          <div class="estado-pill"            onclick="selectEstado('Regular',this)">⚠️ Regular</div>
-          <div class="estado-pill"            onclick="selectEstado('Malo',this)">❌ Malo</div>
-        </div>
-        <input type="hidden" id="f-estado" value="Bueno">
-
-        <!-- ── GUARDAR ── -->
-        <button class="btn-save" onclick="guardarRegistro()">
-          💾 Guardar en Sheet y Base de Datos
-        </button>
-
       </div>
     </div>
+
+    <!-- BAT -->
+    <div class="card">
+      <div class="card-header"><span class="ch-icon">⚙️</span>Datos del Sistema (.bat)</div>
+      <div class="bat-zone" id="bat-zone">
+        <input type="file" id="bat-file" accept=".json,.txt" onchange="cargarBat()">
+        <div class="bat-icon">📄</div>
+        <div class="bat-label">Sube el archivo info.json</div>
+        <div class="bat-hint">Ejecuta <strong>recopilar_info.bat</strong> en el equipo y sube el archivo generado</div>
+      </div>
+      <div class="bat-ok" id="bat-ok">✅ Datos del sistema cargados correctamente</div>
+      <div class="slabel" style="margin-top:14px">Datos extraídos (editables)</div>
+      <div class="fields-grid cols3">
+        <div class="field-group full">
+          <label>Tipo de Equipo</label>
+          <input type="text" id="c1-tipo" placeholder="Ej: COMPUTADOR DE ESCRITORIO">
+        </div>
+        <div class="field-group">
+          <label>Marca</label>
+          <input type="text" id="c1-marca" placeholder="Ej: HP">
+        </div>
+        <div class="field-group">
+          <label>Modelo</label>
+          <input type="text" id="c1-modelo" placeholder="Ej: ProDesk 400 G3">
+        </div>
+        <div class="field-group">
+          <label>Número de Serie (S/N)</label>
+          <input type="text" id="c1-serie" placeholder="Desde BAT o etiqueta">
+        </div>
+        <div class="field-group">
+          <label>Sistema Operativo</label>
+          <input type="text" id="c1-so" placeholder="Ej: Windows 11 Pro">
+        </div>
+        <div class="field-group">
+          <label>Memoria RAM</label>
+          <input type="text" id="c1-ram" placeholder="Ej: 16 GB">
+        </div>
+        <div class="field-group full">
+          <label>Procesador</label>
+          <input type="text" id="c1-cpu" placeholder="Ej: Intel Core i7-6700">
+        </div>
+        <div class="field-group">
+          <label>Disco (tamaño)</label>
+          <input type="text" id="c1-disco-tam" placeholder="Ej: 477">
+        </div>
+        <div class="field-group">
+          <label>Disco (unidad)</label>
+          <select id="c1-disco-uni">
+            <option>GB</option><option>TB</option><option>MB</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Hostname</label>
+          <input type="text" id="c1-hostname" placeholder="Ej: PCUIOCOT085L">
+        </div>
+        <div class="field-group">
+          <label>Dirección IP</label>
+          <input type="text" id="c1-ip" placeholder="Ej: 172.16.86.13">
+        </div>
+        <div class="field-group">
+          <label>MAC Address</label>
+          <input type="text" id="c1-mac" placeholder="Ej: DC:4A:3E:58:52:9F">
+        </div>
+        <div class="field-group">
+          <label>Usuarios Perfiles</label>
+          <input type="text" id="c1-usuarios" placeholder="Desde BAT">
+        </div>
+      </div>
+    </div>
+
+    <!-- Fotos + OCR etiqueta -->
+    <div class="card">
+      <div class="card-header"><span class="ch-icon">📷</span>Fotos (cámara)</div>
+      <div class="foto-row">
+        <div class="foto-zone" id="c1-zone-eq">
+          <input type="file" id="c1-foto-eq" accept="image/*" capture="environment"
+                 onchange="prevFoto(this,'c1-prev-eq','c1-zone-eq','c1-icon-eq')">
+          <img class="fz-prev" id="c1-prev-eq" alt="">
+          <div class="fz-icon" id="c1-icon-eq">📷</div>
+          <div class="fz-label">Foto del Equipo</div>
+          <div class="fz-hint">Toca para abrir la cámara</div>
+        </div>
+        <div class="foto-zone" id="c1-zone-et">
+          <input type="file" id="c1-foto-et" accept="image/*" capture="environment"
+                 onchange="prevFoto(this,'c1-prev-et','c1-zone-et','c1-icon-et'); runOCR('c1')">
+          <img class="fz-prev" id="c1-prev-et" alt="">
+          <div class="fz-icon" id="c1-icon-et">🏷️</div>
+          <div class="fz-label">Etiqueta <span class="ocr-badge">OCR</span></div>
+          <div class="fz-hint">Auto-leerá Marca, Modelo, Serie</div>
+        </div>
+      </div>
+      <div class="ocr-box">
+        <div class="ocr-hdr">
+          <span class="ocr-title">🔍 Texto OCR etiqueta</span>
+          <button class="ocr-btn" onclick="runOCR('c1')">🔄 Re-analizar</button>
+        </div>
+        <div class="ocr-text" id="c1-ocr-text">Captura la etiqueta del equipo...</div>
+        <div class="ocr-bar"><div class="ocr-fill" id="c1-ocr-fill"></div></div>
+        <div class="ocr-st" id="c1-ocr-st"></div>
+      </div>
+    </div>
+
+    <!-- Identificación y estado -->
+    <div class="card">
+      <div class="card-header"><span class="ch-icon">🏷️</span>Identificación y Estado</div>
+      <div class="fields-grid">
+        <div class="field-group">
+          <label>Código del Bien IESS</label>
+          <input type="text" id="c1-codigo-bien" placeholder="Ej: IM-0511 C.C.Q.A.H.D.">
+        </div>
+        <div class="field-group">
+          <label>Código Auxiliar</label>
+          <input type="text" id="c1-codigo-aux" placeholder="Ej: 27038980000661">
+        </div>
+        <div class="field-group">
+          <label>Proveedor</label>
+          <input type="text" id="c1-proveedor" placeholder="Ej: N/A">
+        </div>
+        <div class="field-group">
+          <label>Ciudad</label>
+          <input type="text" id="c1-ciudad" value="QUITO">
+        </div>
+      </div>
+      <div class="slabel">Estado del equipo</div>
+      <div class="estado-pills">
+        <div class="estado-pill sel-bueno" onclick="selEstado('c1','Bueno',this)">✅ Bueno</div>
+        <div class="estado-pill" onclick="selEstado('c1','Regular',this)">⚠️ Regular</div>
+        <div class="estado-pill" onclick="selEstado('c1','Malo',this)">❌ Malo</div>
+      </div>
+      <input type="hidden" id="c1-estado" value="Bueno">
+    </div>
+
+    <button class="btn-save" onclick="guardar('completo')">💾 Guardar en Google Sheets</button>
+  </div>
+
+  <!-- ════ MÓDULO 2: PERIFÉRICO ════ -->
+  <div id="mod-periferico" style="display:none">
+
+    <!-- Equipo al que pertenece -->
+    <div class="card">
+      <div class="card-header"><span class="ch-icon">🖥️</span>Equipo al que pertenece</div>
+      <div class="field-group">
+        <label>Selecciona el computador</label>
+        <select id="p-equipo">
+          <option value="">-- Cargando equipos... --</option>
+        </select>
+      </div>
+      <div class="fields-grid" style="margin-top:12px">
+        <div class="field-group">
+          <label>Custodio del equipo</label>
+          <input type="text" id="p-custodio-display" readonly placeholder="Auto desde selección">
+        </div>
+        <div class="field-group">
+          <label>Ubicación del equipo</label>
+          <input type="text" id="p-ubicacion-display" readonly placeholder="Auto desde selección">
+        </div>
+      </div>
+    </div>
+
+    <!-- Tipo de periférico -->
+    <div class="card">
+      <div class="card-header"><span class="ch-icon">🔌</span>Tipo de Periférico</div>
+      <div class="peri-grid">
+        <div class="peri-chip" id="chip-monitor" onclick="selPeri('MONITOR',this)">
+          <span class="pi">🖥️</span>Monitor
+        </div>
+        <div class="peri-chip" id="chip-mouse" onclick="selPeri('MOUSE',this)">
+          <span class="pi">🖱️</span>Mouse
+        </div>
+        <div class="peri-chip" id="chip-teclado" onclick="selPeri('TECLADO',this)">
+          <span class="pi">⌨️</span>Teclado
+        </div>
+        <div class="peri-chip" id="chip-impresora" onclick="selPeri('IMPRESORA',this)">
+          <span class="pi">🖨️</span>Impresora
+        </div>
+      </div>
+      <input type="hidden" id="p-tipo" value="">
+    </div>
+
+    <!-- Fotos + OCR -->
+    <div class="card">
+      <div class="card-header"><span class="ch-icon">📷</span>Fotos del Periférico</div>
+      <div class="foto-row">
+        <div class="foto-zone" id="p-zone-eq">
+          <input type="file" id="p-foto-eq" accept="image/*" capture="environment"
+                 onchange="prevFoto(this,'p-prev-eq','p-zone-eq','p-icon-eq')">
+          <img class="fz-prev" id="p-prev-eq" alt="">
+          <div class="fz-icon" id="p-icon-eq">📷</div>
+          <div class="fz-label">Foto del Periférico</div>
+          <div class="fz-hint">Toca para abrir la cámara</div>
+        </div>
+        <div class="foto-zone" id="p-zone-et">
+          <input type="file" id="p-foto-et" accept="image/*" capture="environment"
+                 onchange="prevFoto(this,'p-prev-et','p-zone-et','p-icon-et'); runOCR('p')">
+          <img class="fz-prev" id="p-prev-et" alt="">
+          <div class="fz-icon" id="p-icon-et">🏷️</div>
+          <div class="fz-label">Etiqueta <span class="ocr-badge">OCR</span></div>
+          <div class="fz-hint">Auto-leerá Marca, Modelo, Serie</div>
+        </div>
+      </div>
+      <div class="ocr-box">
+        <div class="ocr-hdr">
+          <span class="ocr-title">🔍 Texto OCR etiqueta</span>
+          <button class="ocr-btn" onclick="runOCR('p')">🔄 Re-analizar</button>
+        </div>
+        <div class="ocr-text" id="p-ocr-text">Captura la etiqueta del periférico...</div>
+        <div class="ocr-bar"><div class="ocr-fill" id="p-ocr-fill"></div></div>
+        <div class="ocr-st" id="p-ocr-st"></div>
+      </div>
+    </div>
+
+    <!-- Datos del periférico -->
+    <div class="card">
+      <div class="card-header"><span class="ch-icon">📝</span>Datos del Periférico</div>
+      <div class="fields-grid">
+        <div class="field-group">
+          <label>Marca</label>
+          <input type="text" id="p-marca" placeholder="Detectado por OCR">
+        </div>
+        <div class="field-group">
+          <label>Modelo</label>
+          <input type="text" id="p-modelo" placeholder="Detectado por OCR">
+        </div>
+        <div class="field-group">
+          <label>Número de Serie</label>
+          <input type="text" id="p-serie" placeholder="Detectado por OCR">
+        </div>
+        <div class="field-group">
+          <label>Código del Bien IESS</label>
+          <input type="text" id="p-codigo-bien" placeholder="Ej: EI-0141">
+        </div>
+        <div class="field-group">
+          <label>Código Auxiliar</label>
+          <input type="text" id="p-codigo-aux" placeholder="Ej: 27004610003867">
+        </div>
+        <div class="field-group">
+          <label>Ciudad</label>
+          <input type="text" id="p-ciudad" value="QUITO">
+        </div>
+      </div>
+      <div class="slabel">Estado</div>
+      <div class="estado-pills">
+        <div class="estado-pill sel-bueno" onclick="selEstado('p','Bueno',this)">✅ Bueno</div>
+        <div class="estado-pill" onclick="selEstado('p','Regular',this)">⚠️ Regular</div>
+        <div class="estado-pill" onclick="selEstado('p','Malo',this)">❌ Malo</div>
+      </div>
+      <input type="hidden" id="p-estado" value="Bueno">
+    </div>
+
+    <button class="btn-save" onclick="guardar('periferico')">💾 Guardar Periférico en Sheets</button>
   </div>
 </div>
 
-<!-- ════════════ INVENTARIO ════════════ -->
+<!-- ══════════ INVENTARIO ══════════ -->
 <div id="page-inv" class="page">
-  <div class="inv-page">
-    <div class="inv-header">
-      <h2>📋 Inventario en Google Sheets</h2>
-      <button class="btn-refresh" onclick="cargarInventario()">🔄 Actualizar</button>
-    </div>
-    <div class="table-card">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th><th>Tipo</th><th>Código Bien</th><th>Marca</th><th>Modelo</th>
-              <th>Serie</th><th>S.O.</th><th>RAM</th>
-              <th>Área</th><th>Custodio</th><th>Operativo</th><th>IP</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
+  <div class="inv-hdr">
+    <h2>📋 Inventario en Google Sheets</h2>
+    <button class="btn-ref" onclick="loadInv()">🔄 Actualizar</button>
+  </div>
+  <div class="table-card">
+    <div class="tw">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Tipo</th><th>Código Bien</th><th>Marca</th><th>Modelo</th>
+          <th>Serie</th><th>S.O.</th><th>RAM</th><th>Custodio</th><th>Área</th>
+          <th>Operativo</th><th>IP</th><th>Foto</th>
+        </tr></thead>
+        <tbody id="inv-tbody"></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -389,232 +499,341 @@
 
 <script>
 const API = window.location.origin;
-let deviceActivo = '';
+let sheetData = [];   // cache de los datos del sheet
+let modActivo = '';
 
-/* ── Páginas ── */
+/* ══ Páginas ══ */
 function showPage(name, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   document.querySelectorAll('.nav-tabs button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  if (name === 'inv') cargarInventario();
+  if (name === 'inv') loadInv();
 }
 
-/* ── Selección de dispositivo ── */
-function selectDevice(card, tipo, icon, gradient) {
-  document.querySelectorAll('.device-card').forEach(c => c.classList.remove('active'));
+/* ══ Módulo selector ══ */
+function selectMod(mod, card) {
+  document.querySelectorAll('.module-card').forEach(c => c.classList.remove('active'));
   card.classList.add('active');
-  deviceActivo = tipo;
-  document.getElementById('panel-banner').style.background = gradient;
-  document.getElementById('banner-icon').textContent  = icon;
-  document.getElementById('banner-title').textContent = tipo;
-  document.getElementById('f-tipo_display').value = tipo;
-  const panel = document.getElementById('form-panel');
-  panel.classList.add('visible');
-  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  modActivo = mod;
+  document.getElementById('mod-completo').style.display  = mod === 'completo'   ? '' : 'none';
+  document.getElementById('mod-periferico').style.display = mod === 'periferico' ? '' : 'none';
+  card.scrollIntoView({behavior:'smooth', block:'end'});
 }
 
-/* ── Preview fotos ── */
-function previewFoto(input, prevId, zoneId, iconId) {
-  const file = input.files[0]; if (!file) return;
+/* ══ Cargar datos del Sheet al iniciar ══ */
+async function cargarSheetData() {
+  try {
+    const data = await (await fetch(`${API}/api/inventario`)).json();
+    sheetData = data;
+    poblarCustodios(data);
+    poblarEquipos(data);
+  } catch(e) { console.warn('No se pudo cargar Sheet:', e); }
+}
+
+function poblarCustodios(data) {
+  const sel = document.getElementById('c1-custodio');
+  const vistos = new Set();
+  const opts = ['<option value="">-- Selecciona custodio --</option>'];
+  data.forEach(r => {
+    const key = (r.cedula || '') + '|' + (r.responsable || '');
+    if (r.responsable && !vistos.has(key)) {
+      vistos.add(key);
+      opts.push(`<option value="${key}">${r.responsable}${r.cedula ? ' — '+r.cedula : ''}</option>`);
+    }
+  });
+  sel.innerHTML = opts.join('');
+}
+
+function poblarEquipos(data) {
+  const sel = document.getElementById('p-equipo');
+  const opts = ['<option value="">-- Selecciona equipo --</option>'];
+  data.forEach((r, i) => {
+    const tipo = (r.tipo||'').toUpperCase();
+    if (tipo.includes('CPU') || tipo.includes('ESCRITORIO') || tipo.includes('PORTAT') ||
+        tipo.includes('UNO') || tipo.includes('TODO') || tipo.includes('LAPTOP') || tipo.includes('SERVIDOR')) {
+      const label = [r.marca, r.modelo, r.serie, r.responsable].filter(Boolean).join(' | ');
+      opts.push(`<option value="${i}">${label || 'Equipo #'+(i+1)}</option>`);
+    }
+  });
+  sel.innerHTML = opts.join('');
+  sel.addEventListener('change', () => {
+    const r = sheetData[+sel.value];
+    if (!r) return;
+    document.getElementById('p-custodio-display').value = r.responsable || '';
+    document.getElementById('p-ubicacion-display').value = r.dependencia || r.ubicacion || '';
+  });
+}
+
+function custodioChanged(pfx) {
+  const val = document.getElementById(`${pfx}-custodio`).value;
+  if (!val) return;
+  const [cedula] = val.split('|');
+  const r = sheetData.find(x => (x.cedula||'') === cedula);
+  if (r) {
+    document.getElementById(`${pfx}-cedula`).value     = r.cedula || '';
+    document.getElementById(`${pfx}-dependencia`).value = r.dependencia || '';
+    document.getElementById(`${pfx}-ubicacion`).value   = r.ubicacion || '';
+  }
+}
+
+/* ══ Cargar BAT info.json ══ */
+function cargarBat() {
+  const file = document.getElementById('bat-file').files[0];
+  if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
+    try {
+      const info = JSON.parse(e.target.result);
+      const set = (id, val) => { if (val) document.getElementById(id).value = val; };
+      set('c1-tipo',      info.tipo || '');
+      set('c1-marca',     info.marca || '');
+      set('c1-modelo',    info.modelo || '');
+      set('c1-serie',     info.serie || '');
+      set('c1-so',        info.sistema_operativo || '');
+      set('c1-ram',       info.ram || '');
+      set('c1-cpu',       info.procesador || '');
+      set('c1-disco-tam', info.disco_tam || '');
+      set('c1-hostname',  info.hostname || '');
+      set('c1-ip',        info.ip || '');
+      set('c1-mac',       info.mac || '');
+      set('c1-usuarios',  info.usuarios || '');
+      if (info.disco_unidad) document.getElementById('c1-disco-uni').value = info.disco_unidad;
+      document.getElementById('bat-ok').style.display = 'block';
+      document.getElementById('bat-zone').style.borderColor = '#34a853';
+      toast('✅ Datos del sistema cargados', 'ok');
+    } catch { toast('❌ El archivo no tiene formato válido', 'err'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ══ Foto preview ══ */
+function prevFoto(input, prevId, zoneId, iconId) {
+  const file = input.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
     document.getElementById(prevId).src = e.target.result;
     document.getElementById(prevId).style.display = 'block';
     document.getElementById(iconId).style.display = 'none';
     document.getElementById(zoneId).classList.add('has-foto');
   };
-  reader.readAsDataURL(file);
+  r.readAsDataURL(file);
 }
 
-/* ── OCR ── */
-function ejecutarOCR() {
-  const input = document.getElementById('foto-etiqueta');
+/* ══ OCR ══ */
+function runOCR(pfx) {
+  const etId  = pfx === 'c1' ? 'c1-foto-et' : 'p-foto-et';
+  const input = document.getElementById(etId);
   if (!input.files.length) return;
-  const ocrText = document.getElementById('ocr-text');
-  const fill    = document.getElementById('ocr-fill');
-  const status  = document.getElementById('ocr-status');
-  ocrText.textContent = 'Leyendo etiqueta…'; fill.style.width = '0%';
+  const txt  = document.getElementById(`${pfx === 'c1' ? 'c1' : 'p'}-ocr-text`);
+  const fill = document.getElementById(`${pfx === 'c1' ? 'c1' : 'p'}-ocr-fill`);
+  const st   = document.getElementById(`${pfx === 'c1' ? 'c1' : 'p'}-ocr-st`);
+  txt.textContent = 'Leyendo etiqueta…'; fill.style.width = '0%';
 
   Tesseract.recognize(input.files[0], 'eng', {
     logger: m => {
       if (m.status === 'recognizing text') {
-        const p = Math.round((m.progress||0)*100);
-        fill.style.width = p+'%';
-        status.textContent = `Procesando: ${p}%`;
+        fill.style.width = Math.round((m.progress||0)*100)+'%';
+        st.textContent   = `Procesando: ${Math.round((m.progress||0)*100)}%`;
       }
     }
   }).then(({data:{text}}) => {
     const t = text.trim();
-    ocrText.textContent = t || 'No se detectó texto.';
+    txt.textContent = t || 'Sin texto detectado.';
     fill.style.width = '100%';
-    status.textContent = t ? '✅ Auto-completando campos…' : '⚠️ Sin texto detectado';
-    if (t) rellenarCampos(t);
-  }).catch(e => { ocrText.textContent = 'Error: '+e; });
+    st.textContent   = t ? '✅ Completando campos…' : '⚠️ Sin texto';
+    if (t) parseOCR(pfx, t);
+  }).catch(e => { txt.textContent = 'Error: '+e; });
 }
 
-/* ── Parser inteligente ── */
-function rellenarCampos(txt) {
-  // S/N
+function parseOCR(pfx, texto) {
+  const prefix = pfx === 'c1' ? 'c1' : 'p';
+  // Serie
   for (const p of [
     /(?:S\/N|SN|Serial\s*(?:No?)?|Serie)\s*[:\-]?\s*([A-Z0-9\-]{5,})/i,
     /\b([A-Z]{2,4}[0-9]{4,}[A-Z0-9]*)\b/,
     /\b([0-9]{4,}[A-Z]{2,}[A-Z0-9]*)\b/
-  ]) { const m=txt.match(p); if(m){ autoFill('f-serie',m[1]); break; } }
+  ]) { const m=texto.match(p); if(m){ autoSet(`${prefix}-serie`, m[1]); break; } }
 
   // Marca
-  for (const m of ['Dell','HP','Hewlett','Lenovo','Acer','Asus','Samsung','LG',
-    'Toshiba','Sony','Apple','MSI','Huawei','Epson','Canon','Brother',
-    'Xerox','Logitech','Microsoft','Panasonic']) {
-    if (new RegExp(m,'i').test(txt)) { autoFill('f-marca',m); break; }
+  for (const mk of ['Dell','HP','Hewlett','Lenovo','Acer','Asus','Samsung','LG','Toshiba',
+    'Sony','Apple','MSI','Huawei','Epson','Canon','Brother','Xerox','Logitech','Microsoft','Panasonic']) {
+    if (new RegExp(mk,'i').test(texto)) { autoSet(`${prefix}-marca`, mk); break; }
   }
   // Modelo
-  for (const l of txt.split('\n').map(l=>l.trim())) {
+  for (const l of texto.split('\n').map(l=>l.trim())) {
     if (l.length>2 && l.length<30 && /[A-Z][0-9]|[0-9][A-Z]/i.test(l) &&
         !/S\/N|Serial|Service|Tag|Date|Mfg|FCC|UL|CE/i.test(l)) {
-      autoFill('f-modelo',l); break;
+      autoSet(`${prefix}-modelo`, l); break;
     }
   }
   // RAM
-  const rm = txt.match(/(\d+)\s*GB\s*(?:RAM|DDR)/i);
-  if (rm) autoFill('f-ram', rm[1]+' GB');
+  const rm = texto.match(/(\d+)\s*GB\s*(?:RAM|DDR)/i);
+  if (rm && pfx==='c1') autoSet('c1-ram', rm[1]+' GB');
   // S.O.
-  const so = txt.match(/Windows\s+\d+[\w\s]*/i);
-  if (so) autoFill('f-sistema_operativo', so[0].trim());
-  // Hostname / hostname patterns
-  const hn = txt.match(/PCUIO[A-Z0-9]+/i);
-  if (hn) autoFill('f-hostname', hn[0]);
-  // MAC
-  const mac = txt.match(/([0-9A-F]{2}[:\-]){5}[0-9A-F]{2}/i);
-  if (mac) autoFill('f-mac', mac[0]);
-  // IP
-  const ip = txt.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
-  if (ip) autoFill('f-ip', ip[0]);
+  const so = texto.match(/Windows\s+\d+[\w\s]*/i);
+  if (so && pfx==='c1') autoSet('c1-so', so[0].trim());
 }
 
-function autoFill(id, val) {
+function autoSet(id, val) {
   const el = document.getElementById(id);
-  if (el && !el.value.trim()) { el.value = val; el.classList.add('autofilled'); }
+  if (el && !el.value.trim()) { el.value = val; el.classList.add('auto'); }
 }
 
-/* ── Estado pills ── */
-function selectEstado(estado, pill) {
-  document.querySelectorAll('.estado-pill').forEach(p => p.className='estado-pill');
-  pill.classList.add({Bueno:'sel-bueno',Regular:'sel-regular',Malo:'sel-malo'}[estado]);
-  document.getElementById('f-estado').value = estado;
+/* ══ Periférico tipo ══ */
+let periActivo = '';
+const periClases = {MONITOR:'sel-mon',MOUSE:'sel-mou',TECLADO:'sel-tec',IMPRESORA:'sel-imp'};
+const periIds    = {MONITOR:'chip-monitor',MOUSE:'chip-mouse',TECLADO:'chip-teclado',IMPRESORA:'chip-impresora'};
+function selPeri(tipo, chip) {
+  periActivo = tipo;
+  document.getElementById('p-tipo').value = tipo;
+  document.querySelectorAll('.peri-chip').forEach(c => c.className = 'peri-chip');
+  chip.classList.add(periClases[tipo] || '');
 }
 
-/* ── Guardar ── */
-async function guardarRegistro() {
-  if (!deviceActivo) { toast('Selecciona primero el tipo de equipo','err'); return; }
+/* ══ Estado pills ══ */
+function selEstado(pfx, val, pill) {
+  const prefix = pfx === 'c1' ? '#mod-completo' : '#mod-periferico';
+  document.querySelectorAll(`${prefix} .estado-pill`).forEach(p => p.className='estado-pill');
+  const cls = {Bueno:'sel-bueno',Regular:'sel-regular',Malo:'sel-malo'};
+  pill.classList.add(cls[val]);
+  document.getElementById(`${pfx}-estado`).value = val;
+}
 
+/* ══ Guardar ══ */
+async function guardar(mod) {
   const fd = new FormData();
-  const ids = ['marca','modelo','serie','sistema_operativo','ram','procesador',
-               'dependencia','ubicacion','cedula_custodio','responsable',
-               'ip','mac','hostname','codigo_bien','codigo_auxiliar'];
-  fd.append('tipo', deviceActivo);
-  fd.append('estado', document.getElementById('f-estado').value);
-  fd.append('ocr_raw', document.getElementById('ocr-text').textContent);
-  ids.forEach(id => fd.append(id, document.getElementById('f-'+id)?.value || ''));
 
-  const fe = document.getElementById('foto-etiqueta').files[0];
-  const fq = document.getElementById('foto-equipo').files[0];
-  if (fe) fd.append('foto_etiqueta', fe);
-  if (fq) fd.append('foto_equipo',   fq);
+  if (mod === 'completo') {
+    const g = id => document.getElementById(id)?.value || '';
+    const custVal = g('c1-custodio');
+    const [cedula, responsable] = custVal.split('|');
+    fd.append('tipo',              g('c1-tipo') || 'COMPUTADOR DE ESCRITORIO');
+    fd.append('marca',             g('c1-marca'));
+    fd.append('modelo',            g('c1-modelo'));
+    fd.append('serie',             g('c1-serie'));
+    fd.append('sistema_operativo', g('c1-so'));
+    fd.append('ram',               g('c1-ram'));
+    fd.append('procesador',        g('c1-cpu'));
+    fd.append('disco_tam',         g('c1-disco-tam'));
+    fd.append('disco_unidad',      g('c1-disco-uni'));
+    fd.append('hostname',          g('c1-hostname'));
+    fd.append('ip',                g('c1-ip'));
+    fd.append('mac',               g('c1-mac'));
+    fd.append('cedula_custodio',   cedula || '');
+    fd.append('responsable',       responsable || '');
+    fd.append('dependencia',       g('c1-dependencia'));
+    fd.append('ubicacion',         g('c1-ubicacion'));
+    fd.append('codigo_bien',       g('c1-codigo-bien'));
+    fd.append('codigo_auxiliar',   g('c1-codigo-aux'));
+    fd.append('proveedor',         g('c1-proveedor'));
+    fd.append('ciudad',            g('c1-ciudad'));
+    fd.append('estado',            g('c1-estado'));
+    fd.append('ocr_raw',           document.getElementById('c1-ocr-text')?.textContent || '');
+    const fe = document.getElementById('c1-foto-et').files[0];
+    const fq = document.getElementById('c1-foto-eq').files[0];
+    if (fe) fd.append('foto_etiqueta', fe);
+    if (fq) fd.append('foto_equipo',   fq);
+
+  } else {
+    if (!periActivo) { toast('Selecciona el tipo de periférico','err'); return; }
+    const g = id => document.getElementById(id)?.value || '';
+    const eqIdx = +document.getElementById('p-equipo').value;
+    const eqRec = sheetData[eqIdx] || {};
+    fd.append('tipo',            periActivo);
+    fd.append('marca',           g('p-marca'));
+    fd.append('modelo',          g('p-modelo'));
+    fd.append('serie',           g('p-serie'));
+    fd.append('dependencia',     eqRec.dependencia || '');
+    fd.append('ubicacion',       eqRec.ubicacion   || '');
+    fd.append('responsable',     eqRec.responsable || '');
+    fd.append('cedula_custodio', eqRec.cedula      || '');
+    fd.append('codigo_bien',     g('p-codigo-bien'));
+    fd.append('codigo_auxiliar', g('p-codigo-aux'));
+    fd.append('ciudad',          g('p-ciudad'));
+    fd.append('estado',          g('p-estado'));
+    fd.append('ocr_raw',         document.getElementById('p-ocr-text')?.textContent || '');
+    const fe = document.getElementById('p-foto-et').files[0];
+    const fq = document.getElementById('p-foto-eq').files[0];
+    if (fe) fd.append('foto_etiqueta', fe);
+    if (fq) fd.append('foto_equipo',   fq);
+  }
 
   try {
     const res  = await fetch(`${API}/api/inventario`, {method:'POST', body:fd});
     const json = await res.json();
     if (res.ok) {
       toast(json.message || '✅ Guardado correctamente', 'ok');
-      limpiar();
+      await cargarSheetData();  // refresca listas
     } else {
       toast('❌ Error: '+(json.detail||'desconocido'), 'err');
     }
   } catch { toast('❌ Sin conexión con el servidor','err'); }
 }
 
-function limpiar() {
-  ['marca','modelo','serie','sistema_operativo','ram','procesador',
-   'dependencia','ubicacion','cedula_custodio','responsable',
-   'ip','mac','hostname','codigo_bien','codigo_auxiliar'].forEach(id => {
-    const el = document.getElementById('f-'+id);
-    if (el) { el.value=''; el.classList.remove('autofilled'); }
-  });
-  document.getElementById('f-estado').value = 'Bueno';
-  document.getElementById('ocr-text').textContent = 'Toma la foto de la etiqueta para detectar texto automáticamente...';
-  document.getElementById('ocr-fill').style.width = '0%';
-  document.getElementById('ocr-status').textContent = '';
-  ['foto-etiqueta','foto-equipo'].forEach(id => document.getElementById(id).value='');
-  ['prev-etiqueta','prev-equipo'].forEach(id => { document.getElementById(id).style.display='none'; });
-  ['fz-icon-equipo','fz-icon-etiqueta'].forEach(id => document.getElementById(id).style.display='');
-  ['zone-equipo','zone-etiqueta'].forEach(id => document.getElementById(id).classList.remove('has-foto'));
-  document.querySelectorAll('.estado-pill').forEach(p => p.className='estado-pill');
-  document.querySelector('.estado-pill').classList.add('sel-bueno');
-}
-
-/* ── Inventario (desde Sheets) ── */
-async function cargarInventario() {
-  const tb = document.getElementById('tbody');
+/* ══ Inventario ══ */
+async function loadInv() {
+  const tb = document.getElementById('inv-tbody');
   tb.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:28px;color:#aaa">Cargando desde Google Sheets...</td></tr>';
   try {
     const data = await (await fetch(`${API}/api/inventario`)).json();
+    sheetData  = data;
     if (!data.length) {
-      tb.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:28px;color:#aaa">Sin registros</td></tr>';
+      tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:28px;color:#aaa">Sin registros</td></tr>';
       return;
     }
-    const tcMap = t => {
-      const tl = (t||'').toLowerCase();
-      if (tl.includes('cpu') || tl.includes('escritorio')) return 'tc-cpu';
-      if (tl.includes('monitor')) return 'tc-monitor';
-      if (tl.includes('teclado')) return 'tc-teclado';
-      if (tl.includes('mouse'))   return 'tc-mouse';
-      if (tl.includes('impresora')) return 'tc-impresora';
-      if (tl.includes('portatil') || tl.includes('portátil')) return 'tc-portatil';
-      if (tl.includes('uno'))    return 'tc-todoenuno';
-      return 'tc-cpu';
+    const chipClass = tipo => {
+      const t=(tipo||'').toLowerCase();
+      if(t.includes('cpu')||t.includes('escritorio'))return'chip-escritorio';
+      if(t.includes('monitor'))return'chip-monitor';
+      if(t.includes('teclado'))return'chip-teclado';
+      if(t.includes('mouse'))return'chip-mouse';
+      if(t.includes('impresora'))return'chip-impresora';
+      if(t.includes('portat')||t.includes('laptop'))return'chip-portatil';
+      if(t.includes('uno'))return'chip-aio';
+      return'chip-cpu';
     };
-    // Foto dinámica según tipo
     const getFoto = r => {
-      const t = (r.tipo||'').toLowerCase();
-      if (t.includes('cpu') || t.includes('escritorio') || t.includes('uno') || t.includes('portatil'))
-        return r.foto_cpu;
-      if (t.includes('monitor'))   return r.foto_monitor;
-      if (t.includes('teclado'))   return r.foto_teclado;
-      if (t.includes('mouse'))     return r.foto_mouse;
-      if (t.includes('impresora')) return r.foto_impresora;
-      return '';
+      const t=(r.tipo||'').toLowerCase();
+      if(t.includes('monitor'))return r.foto_monitor;
+      if(t.includes('teclado'))return r.foto_teclado;
+      if(t.includes('mouse'))return r.foto_mouse;
+      if(t.includes('impresora'))return r.foto_impresora;
+      return r.foto_cpu;
     };
     tb.innerHTML = data.map((r,i) => {
+      const op = (r.operativo||'').toUpperCase()==='SI';
       const foto = getFoto(r);
-      const op   = (r.operativo||'').toUpperCase() === 'SI';
       return `<tr>
         <td>${i+1}</td>
-        <td><span class="type-chip ${tcMap(r.tipo)}">${r.tipo}</span></td>
+        <td><span class="chip ${chipClass(r.tipo)}">${r.tipo||'—'}</span></td>
         <td style="font-size:11px">${r.codigo_bien||'—'}</td>
         <td><strong>${r.marca||'—'}</strong></td>
         <td>${r.modelo||'—'}</td>
         <td style="font-family:monospace;font-size:11px">${r.serie||'—'}</td>
         <td style="font-size:11px">${r.sistema_op||'—'}</td>
-        <td style="font-size:11px">${r.ram||'—'}</td>
-        <td style="font-size:11px">${r.dependencia||r.ubicacion||'—'}</td>
+        <td>${r.ram||'—'}</td>
         <td style="font-size:11px">${r.responsable||'—'}</td>
-        <td><span class="badge ${op?'badge-si':'badge-no'}">${op?'✅ SI':'❌ NO'}</span></td>
+        <td style="font-size:11px">${r.dependencia||r.ubicacion||'—'}</td>
+        <td><span class="${op?'badge-si':'badge-no'}">${op?'✅ SI':'❌ NO'}</span></td>
         <td style="font-family:monospace;font-size:11px">${r.ip||'—'}</td>
-        <td>${foto ? `<img class="thumb" src="${foto}">` : '—'}</td>
+        <td>${foto?`<img class="thumb" src="${foto}">`:'—'}</td>
       </tr>`;
     }).join('');
   } catch(e) {
-    tb.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:20px;color:#e53">Error: ${e.message}</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="13" style="text-align:center;padding:20px;color:#e53">Error: ${e.message}</td></tr>`;
   }
 }
 
-/* ── Toast ── */
+/* ══ Toast ══ */
 function toast(msg, tipo='ok') {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.className = `toast show ${tipo}`;
-  setTimeout(() => el.className='toast', 3500);
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className=`toast show ${tipo}`;
+  setTimeout(()=>el.className='toast',3500);
 }
+
+/* ══ Init ══ */
+cargarSheetData();
 </script>
 </body>
 </html>
