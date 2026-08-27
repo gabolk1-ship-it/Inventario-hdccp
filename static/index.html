@@ -175,8 +175,17 @@
   <div class="nav-tabs">
     <button class="active" onclick="showPage('reg',this)">📝 Registrar</button>
     <button onclick="showPage('inv',this)">📋 Inventario</button>
+    <span id="sheet-count" style="font-size:11px;opacity:.7;align-self:center;margin-left:6px"></span>
   </div>
 </header>
+
+<!-- Banner de carga -->
+<div id="loading-banner" style="display:flex;align-items:center;justify-content:center;
+  gap:10px;background:#e8f0fe;color:#1a73e8;padding:10px;font-size:13px;font-weight:600">
+  <span style="animation:spin 1s linear infinite;display:inline-block">⏳</span>
+  Cargando datos de Google Sheets...
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
 <!-- ══════════ REGISTRO ══════════ -->
 <div id="page-reg" class="page active">
@@ -523,12 +532,28 @@ function selectMod(mod, card) {
 
 /* ══ Cargar datos del Sheet al iniciar ══ */
 async function cargarSheetData() {
+  const banner = document.getElementById('loading-banner');
+  if (banner) { banner.style.display = 'flex'; }
   try {
     const data = await (await fetch(`${API}/api/inventario`)).json();
     sheetData = data;
     poblarCustodios(data);
     poblarEquipos(data);
-  } catch(e) { console.warn('No se pudo cargar Sheet:', e); }
+    if (banner) banner.style.display = 'none';
+    // Mostrar conteo en header
+    const ct = document.getElementById('sheet-count');
+    if (ct) ct.textContent = `${data.length} equipos en Sheet`;
+  } catch(e) {
+    console.warn('No se pudo cargar Sheet:', e);
+    if (banner) {
+      banner.innerHTML = `<span>⚠️ No se pudo conectar con Google Sheets. 
+        <button onclick="cargarSheetData()" style="background:white;color:#e65100;border:none;
+        font-weight:700;padding:4px 12px;border-radius:8px;cursor:pointer;margin-left:8px">
+        🔄 Reintentar</button></span>`;
+      banner.style.background = '#fff3e0';
+      banner.style.color = '#e65100';
+    }
+  }
 }
 
 function poblarCustodios(data) {
