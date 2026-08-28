@@ -514,25 +514,33 @@
   <!-- ════ MÓDULO 2: PERIFÉRICO ════ -->
   <div id="mod-periferico" style="display:none">
 
-    <!-- Equipo al que pertenece -->
+    <!-- Equipo o Área al que pertenece -->
     <div class="card">
-      <div class="card-header">Vinculación con Computador</div>
+      <div class="card-header">Asignación / Vinculación (Computador, Persona o Área)</div>
       <div class="field-group full">
-        <label>Selecciona el computador <span style="font-weight:400;color:#64748b">(escribe para filtrar)</span></label>
+        <label>Computador al que se conecta <span style="font-weight:400;color:#64748b">(opcional, escribe para filtrar)</span></label>
         <input type="text" id="p-filtro-equipo" placeholder="Escribe marca, serie o custodio para buscar..."
                oninput="filtrarEquipos(this.value)" style="margin-bottom:5px">
         <select id="p-equipo">
-          <option value="">-- Cargando equipos... --</option>
+          <option value="">-- Sin vincular a computador (Bodega / Área / Independiente) --</option>
         </select>
       </div>
       <div class="fields-grid" style="margin-top:12px">
         <div class="field-group">
-          <label>Custodio del equipo</label>
-          <input type="text" id="p-custodio-display" readonly placeholder="Auto desde selección">
+          <label>Custodio / Responsable <span style="font-weight:400;color:#64748b">(Persona o BODEGA)</span></label>
+          <input type="text" id="p-custodio-display" placeholder="Ej: SANDRA ERAZO o BODEGA">
         </div>
         <div class="field-group">
-          <label>Ubicación del equipo</label>
-          <input type="text" id="p-ubicacion-display" readonly placeholder="Auto desde selección">
+          <label>Cédula Custodio</label>
+          <input type="text" id="p-cedula-display" placeholder="Cédula (si aplica)">
+        </div>
+        <div class="field-group">
+          <label>Dependencia / Edificio</label>
+          <input type="text" id="p-dependencia-display" value="C.C.Q.A.H.D. COTOCOLLAO">
+        </div>
+        <div class="field-group">
+          <label>Ubicación / Área Funcional</label>
+          <input type="text" id="p-ubicacion-display" placeholder="Ej: BODEGA GENERAL, CONSULTORIO 2, ADMISIÓN">
         </div>
       </div>
     </div>
@@ -541,11 +549,12 @@
     <div class="card">
       <div class="card-header">Elemento a Registrar / Complementar</div>
       <div class="peri-grid">
-        <div class="peri-chip" id="chip-cpu" onclick="selPeri('CPU',this)">CPU / Chasis</div>
         <div class="peri-chip" id="chip-monitor" onclick="selPeri('MONITOR',this)">Monitor</div>
         <div class="peri-chip" id="chip-mouse" onclick="selPeri('MOUSE',this)">Mouse</div>
         <div class="peri-chip" id="chip-teclado" onclick="selPeri('TECLADO',this)">Teclado</div>
         <div class="peri-chip" id="chip-impresora" onclick="selPeri('IMPRESORA',this)">Impresora</div>
+        <div class="peri-chip" id="chip-ups" onclick="selPeri('UPS',this)">UPS / Regulador</div>
+        <div class="peri-chip" id="chip-escaner" onclick="selPeri('ESCÁNER',this)">Escáner / Lector</div>
       </div>
       <input type="hidden" id="p-tipo" value="">
     </div>
@@ -835,15 +844,21 @@ function poblarEquipos(data) {
     if (sel.value === '') return;
     const r = sheetData[+sel.value];
     if (!r) return;
-    document.getElementById('p-custodio-display').value = r.responsable || '';
-    document.getElementById('p-ubicacion-display').value = r.dependencia || r.ubicacion || '';
+    const cCust = document.getElementById('p-custodio-display');
+    const cCed  = document.getElementById('p-cedula-display');
+    const cDep  = document.getElementById('p-dependencia-display');
+    const cUbi  = document.getElementById('p-ubicacion-display');
+    if (cCust) cCust.value = r.responsable || '';
+    if (cCed)  cCed.value  = r.cedula || '';
+    if (cDep)  cDep.value  = r.dependencia || 'C.C.Q.A.H.D. COTOCOLLAO';
+    if (cUbi)  cUbi.value  = r.ubicacion || '';
   };
 }
 
 function renderEquipos(filtro) {
   const sel = document.getElementById('p-equipo');
   const term = safeStr(filtro).toLowerCase();
-  const opts = ['<option value="">-- Selecciona computador (' + listaEquipos.length + ') --</option>'];
+  const opts = ['<option value="">-- Sin vincular a computador (Bodega / Área / Independiente) --</option>'];
   listaEquipos.forEach(eq => {
     const fullSearch = `${eq.marca} ${eq.modelo} ${eq.serie} ${eq.responsable} ${eq.codigo_bien}`.toLowerCase();
     if (!term || fullSearch.includes(term)) {
@@ -1221,14 +1236,16 @@ function autoSet(id, val) {
 
 /* ══ Periférico / Componente tipo ══ */
 let periActivo = '';
-const periClases = {CPU:'sel-mon',MONITOR:'sel-mon',MOUSE:'sel-mou',TECLADO:'sel-tec',IMPRESORA:'sel-imp'};
-const periIds    = {CPU:'chip-cpu',MONITOR:'chip-monitor',MOUSE:'chip-mouse',TECLADO:'chip-teclado',IMPRESORA:'chip-impresora'};
+const periClases = {CPU:'sel-mon',MONITOR:'sel-mon',MOUSE:'sel-mou',TECLADO:'sel-tec',IMPRESORA:'sel-imp',UPS:'sel-mon',ESCÁNER:'sel-tec'};
+const periIds    = {CPU:'chip-cpu',MONITOR:'chip-monitor',MOUSE:'chip-mouse',TECLADO:'chip-teclado',IMPRESORA:'chip-impresora',UPS:'chip-ups',ESCÁNER:'chip-escaner'};
 const periLabels = {
   CPU:       '💾 Guardar CPU en Google Sheets',
   MONITOR:   '💾 Guardar Monitor en Google Sheets',
   MOUSE:     '💾 Guardar Mouse en Google Sheets',
   TECLADO:   '💾 Guardar Teclado en Google Sheets',
-  IMPRESORA: '💾 Guardar Impresora en Google Sheets'
+  IMPRESORA: '💾 Guardar Impresora en Google Sheets',
+  UPS:       '💾 Guardar UPS / Regulador en Google Sheets',
+  ESCÁNER:   '💾 Guardar Escáner / Lector en Google Sheets'
 };
 
 function selPeri(tipo, chip) {
@@ -1318,30 +1335,46 @@ async function guardar(mod) {
       fd.append('marca',           g('p-marca'));
       fd.append('modelo',          g('p-modelo'));
       fd.append('serie',           g('p-serie'));
-      fd.append('dependencia',     eqRec.dependencia || '');
-      fd.append('ubicacion',       eqRec.ubicacion   || '');
-      fd.append('responsable',     eqRec.responsable || '');
-      fd.append('cedula_custodio', eqRec.cedula      || '');
+
+      const respVal = g('p-custodio-display') || eqRec.responsable || '';
+      const cedVal  = g('p-cedula-display') || eqRec.cedula || '';
+      const depVal  = g('p-dependencia-display') || eqRec.dependencia || 'C.C.Q.A.H.D. COTOCOLLAO';
+      const ubiVal  = g('p-ubicacion-display') || eqRec.ubicacion || '';
+
+      fd.append('responsable',     respVal);
+      fd.append('cedula_custodio', cedVal);
+      fd.append('dependencia',     depVal);
+      fd.append('ubicacion',       ubiVal);
+
       fd.append('codigo_bien',     g('p-codigo-bien'));
       fd.append('codigo_auxiliar', g('p-codigo-aux'));
-      fd.append('ciudad',          g('p-ciudad'));
-      fd.append('estado',          g('p-estado'));
+      fd.append('ciudad',          g('p-ciudad') || 'QUITO');
+      fd.append('estado',          g('p-estado') || 'Bueno');
       fd.append('ocr_raw',         document.getElementById('p-ocr-text')?.textContent || '');
 
-      if (eqRec.fila) {
-        fd.append('fila', eqRec.fila);
-      } else {
-        const pBien = (g('p-codigo-bien') || '').trim().toUpperCase();
-        const pSer  = (g('p-serie') || '').trim().toUpperCase();
-        const pAux  = (g('p-codigo-aux') || '').trim().toUpperCase();
-        if (Array.isArray(sheetData) && (pBien || pSer || pAux)) {
-          const matchP = sheetData.find(r =>
+      // Vincular con el CPU si se seleccionó uno
+      if (eqRec.id_unico) {
+        fd.append('id_equipo_principal', eqRec.id_unico);
+      } else if (eqRec.serie) {
+        fd.append('id_equipo_principal', 'CPU S/N: ' + eqRec.serie);
+      }
+
+      // CRÍTICO: NUNCA enviar eqRec.fila (evita sobreescribir el CPU).
+      // Solo enviar fila si este MISMO periférico ya existía en el Sheet por su propia serie o bien
+      const pBien = (g('p-codigo-bien') || '').trim().toUpperCase();
+      const pSer  = (g('p-serie') || '').trim().toUpperCase();
+      const pAux  = (g('p-codigo-aux') || '').trim().toUpperCase();
+      if (Array.isArray(sheetData) && (pBien || pSer || pAux)) {
+        const matchP = sheetData.find(r => {
+          const rTipo = (r.tipo || '').toUpperCase();
+          const esMismoTipo = rTipo.includes(periActivo) || (!rTipo.includes('CPU') && !rTipo.includes('ESCRITORIO') && !rTipo.includes('PORTAT') && !rTipo.includes('UNO'));
+          return esMismoTipo && (
             (pBien && (r.codigo_bien||'').trim().toUpperCase() === pBien) ||
             (pSer  && (r.serie||'').trim().toUpperCase() === pSer && pSer.length > 3) ||
             (pAux  && (r.codigo_aux||'').trim().toUpperCase() === pAux && pAux.length > 5)
           );
-          if (matchP && matchP.fila) fd.append('fila', matchP.fila);
-        }
+        });
+        if (matchP && matchP.fila) fd.append('fila', matchP.fila);
       }
 
       const fe = document.getElementById('p-foto-et')?.files?.[0];
@@ -1431,14 +1464,12 @@ function limpiarFormulario(mod) {
       btn.style.background = 'linear-gradient(135deg,#0284c7,#0369a1)';
     }
   } else {
-    ['p-filtro-equipo', 'p-custodio-display', 'p-ubicacion-display',
-     'p-codigo-bien', 'p-codigo-aux', 'p-marca', 'p-modelo', 'p-serie'].forEach(id => {
+    // Limpiar solo los datos específicos del periférico registrado
+    // (Mantiene el computador / custodio / área seleccionados para cargar varios periféricos seguidos fácilmente)
+    ['p-codigo-bien', 'p-codigo-aux', 'p-marca', 'p-modelo', 'p-serie'].forEach(id => {
       const el = document.getElementById(id);
       if (el) { el.value = ''; el.classList.remove('auto'); }
     });
-
-    const pEq = document.getElementById('p-equipo');
-    if (pEq) pEq.value = '';
 
     const pTipo = document.getElementById('p-tipo');
     if (pTipo) pTipo.value = '';
@@ -1500,6 +1531,11 @@ async function loadInv() {
       if(t.includes('uno'))return'chip-aio';
       return'chip-cpu';
     };
+    const extractUrl = str => {
+      if (!str) return '';
+      const m = str.match(/https?:\/\/[^\s";)]+/);
+      return m ? m[0] : (str.startsWith('http') ? str : '');
+    };
     const getFoto = r => {
       const t = safeStr(r.tipo).toLowerCase();
       if(t.includes('monitor'))return r.foto_monitor;
@@ -1510,7 +1546,8 @@ async function loadInv() {
     };
     tb.innerHTML = data.map((r,i) => {
       const op = safeStr(r.operativo).toUpperCase() === 'SI';
-      const foto = getFoto(r);
+      const rawFoto = getFoto(r);
+      const urlFoto = extractUrl(rawFoto);
       return `<tr>
         <td>${i+1}</td>
         <td><span class="chip ${chipClass(r.tipo)}">${safeStr(r.tipo)||'—'}</span></td>
@@ -1524,7 +1561,7 @@ async function loadInv() {
         <td style="font-size:11px">${safeStr(r.dependencia||r.ubicacion)||'—'}</td>
         <td><span class="${op?'badge-si':'badge-no'}">${op?'✅ SI':'❌ NO'}</span></td>
         <td style="font-family:monospace;font-size:11px">${safeStr(r.ip)||'—'}</td>
-        <td>${foto?`<img class="thumb" src="${foto}">`:'—'}</td>
+        <td>${urlFoto?`<a href="${urlFoto}" target="_blank" style="color:#0284c7;font-weight:600;text-decoration:none">📷 Ver</a>`:'—'}</td>
       </tr>`;
     }).join('');
   } catch(e) {

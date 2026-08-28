@@ -134,14 +134,14 @@ def col_idx(headers: list, name: str) -> Optional[int]:
     except: return None
 
 def tipo_prefix(tipo: str) -> str:
-    t = tipo.lower()
+    t = (tipo or "").lower()
     for k in ["cpu", "monitor", "teclado", "mouse", "impresora"]:
         if k in t:
             return k.capitalize()
     if "escritorio" in t or "torre" in t: return "CPU"
     if "portatil" in t or "portátil" in t: return "CPU"
     if "uno" in t: return "CPU"
-    return "CPU"
+    return "Otro"
 
 def img(url: str) -> str:
     """Guarda la foto como hipervínculo clicable en Google Sheets (compatible con todos los hosts)."""
@@ -171,6 +171,17 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
             fila_num = None
 
     todas_filas = ws.get_all_values()
+    tipo_str = (data.get("tipo") or "").upper()
+    es_periferico = any(p in tipo_str for p in ["MONITOR", "TECLADO", "MOUSE", "IMPRESORA", "UPS", "REGULADOR", "ESCANER", "ESCÁNER", "LECTOR"])
+
+    col_tipo_i = col_idx(headers, "Tipo de bien")
+
+    # Si se pasó fila explícita, pero es periférico y la fila es un computador, NO sobreescribir el computador
+    if fila_num and fila_num <= len(todas_filas) and es_periferico:
+        r_actual = todas_filas[fila_num - 1]
+        t_actual = r_actual[col_tipo_i].upper() if col_tipo_i is not None and col_tipo_i < len(r_actual) else ""
+        if any(c in t_actual for c in ["COMPUTADOR", "PORTÁTIL", "PORTATIL", "ESCRITORIO", "TODO EN UNO", "SERVIDOR", "CPU"]):
+            fila_num = None  # Forzar creación de fila nueva para el periférico
 
     # Si no se pasó fila explícita, buscar inteligentemente coincidencia
     if not fila_num and len(todas_filas) > 1:
@@ -186,56 +197,76 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
         col_resp_i = col_idx(headers, "Nombre del Custodio")
         col_ced_i  = col_idx(headers, "Cédula Custodio")
 
-        # 1. Prioridad: Coincidencia Custodio + (Serie o Código Bien)
-        if (resp_cust or ced_cust) and (serie_eq or cod_bien):
+        if not es_periferico:
+            # 1. Prioridad para computadores: Coincidencia Custodio + (Serie o Código Bien)
+            if (resp_cust or ced_cust) and (serie_eq or cod_bien):
+                for num_f in range(len(todas_filas), 1, -1):
+                    r = todas_filas[num_f - 1]
+                    val_resp = r[col_resp_i].strip().upper() if col_resp_i is not None and col_resp_i < len(r) else ""
+                    val_ced  = r[col_ced_i].strip().upper()  if col_ced_i is not None and col_ced_i < len(r) else ""
+                    val_ser  = r[col_ser_i].strip().upper()  if col_ser_i is not None and col_ser_i < len(r) else ""
+                    val_bien = r[col_bien_i].strip().upper() if col_bien_i is not None and col_bien_i < len(r) else ""
+                    cust_match = (resp_cust and (resp_cust in val_resp or val_resp in resp_cust)) or (ced_cust and ced_cust == val_ced)
+                    eq_match   = (serie_eq and val_ser == serie_eq) or (cod_bien and val_bien == cod_bien)
+                    if cust_match and eq_match:
+                        fila_num = num_f
+                        break
+
+            # 2. Prioridad: Coincidencia doble (Código Bien Y Serie)
+            if not fila_num and cod_bien and serie_eq and len(serie_eq) > 3:
+                for num_f in range(len(todas_filas), 1, -1):
+                    r = todas_filas[num_f - 1]
+                    val_bien = r[col_bien_i].strip().upper() if col_bien_i is not None and col_bien_i < len(r) else ""
+                    val_ser  = r[col_ser_i].strip().upper()  if col_ser_i is not None and col_ser_i < len(r) else ""
+                    if val_bien == cod_bien and val_ser == serie_eq:
+                        fila_num = num_f
+                        break
+
+            # 3. Coincidencia por Código del Bien IESS
+            if not fila_num and cod_bien:
+                for num_f in range(len(todas_filas), 1, -1):
+                    r = todas_filas[num_f - 1]
+                    val_bien = r[col_bien_i].strip().upper() if col_bien_i is not None and col_bien_i < len(r) else ""
+                    if val_bien == cod_bien:
+                        fila_num = num_f
+                        break
+
+            # 4. Coincidencia por Serie del equipo
+            if not fila_num and serie_eq and len(serie_eq) > 3:
+                for num_f in range(len(todas_filas), 1, -1):
+                    r = todas_filas[num_f - 1]
+                    val_ser  = r[col_ser_i].strip().upper() if col_ser_i is not None and col_ser_i < len(r) else ""
+                    if val_ser == serie_eq:
+                        fila_num = num_f
+                        break
+
+            # 5. Coincidencia por Código Auxiliar
+            if not fila_num and cod_aux and len(cod_aux) > 5:
+                for num_f in range(len(todas_filas), 1, -1):
+                    r = todas_filas[num_f - 1]
+                    val_aux  = r[col_aux_i].strip().upper() if col_aux_i is not None and col_aux_i < len(r) else ""
+                    if val_aux == cod_aux:
+                        fila_num = num_f
+                        break
+        else:
+            # Para periféricos: SOLO coincidir si la fila ya es del mismo tipo de periférico por Serie o Código de Bien
             for num_f in range(len(todas_filas), 1, -1):
                 r = todas_filas[num_f - 1]
-                val_resp = r[col_resp_i].strip().upper() if col_resp_i is not None and col_resp_i < len(r) else ""
-                val_ced  = r[col_ced_i].strip().upper()  if col_ced_i is not None and col_ced_i < len(r) else ""
+                t_f = r[col_tipo_i].upper() if col_tipo_i is not None and col_tipo_i < len(r) else ""
+                val_bien = r[col_bien_i].strip().upper() if col_bien_i is not None and col_bien_i < len(r) else ""
                 val_ser  = r[col_ser_i].strip().upper()  if col_ser_i is not None and col_ser_i < len(r) else ""
-                val_bien = r[col_bien_i].strip().upper() if col_bien_i is not None and col_bien_i < len(r) else ""
-                cust_match = (resp_cust and (resp_cust in val_resp or val_resp in resp_cust)) or (ced_cust and ced_cust == val_ced)
-                eq_match   = (serie_eq and val_ser == serie_eq) or (cod_bien and val_bien == cod_bien)
-                if cust_match and eq_match:
+                val_aux  = r[col_aux_i].strip().upper()  if col_aux_i is not None and col_aux_i < len(r) else ""
+
+                mismo_periferico = (cod_bien and val_bien == cod_bien) or \
+                                   (serie_eq and len(serie_eq) > 3 and val_ser == serie_eq) or \
+                                   (cod_aux and len(cod_aux) > 5 and val_aux == cod_aux)
+
+                if mismo_periferico and (tipo_str in t_f or not any(c in t_f for c in ["COMPUTADOR", "PORTÁTIL", "ESCRITORIO", "TODO EN UNO"])):
                     fila_num = num_f
                     break
 
-        # 2. Prioridad: Coincidencia doble (Código Bien Y Serie)
-        if not fila_num and cod_bien and serie_eq and len(serie_eq) > 3:
-            for num_f in range(len(todas_filas), 1, -1):
-                r = todas_filas[num_f - 1]
-                val_bien = r[col_bien_i].strip().upper() if col_bien_i is not None and col_bien_i < len(r) else ""
-                val_ser  = r[col_ser_i].strip().upper()  if col_ser_i is not None and col_ser_i < len(r) else ""
-                if val_bien == cod_bien and val_ser == serie_eq:
-                    fila_num = num_f
-                    break
-
-        # 3. Coincidencia por Código del Bien IESS (ej: IM-0831)
-        if not fila_num and cod_bien:
-            for num_f in range(len(todas_filas), 1, -1):
-                r = todas_filas[num_f - 1]
-                val_bien = r[col_bien_i].strip().upper() if col_bien_i is not None and col_bien_i < len(r) else ""
-                if val_bien == cod_bien:
-                    fila_num = num_f
-                    break
-
-        # 4. Coincidencia por Serie del equipo (ej: MXL7050PM4)
-        if not fila_num and serie_eq and len(serie_eq) > 3:
-            for num_f in range(len(todas_filas), 1, -1):
-                r = todas_filas[num_f - 1]
-                val_ser  = r[col_ser_i].strip().upper() if col_ser_i is not None and col_ser_i < len(r) else ""
-                if val_ser == serie_eq:
-                    fila_num = num_f
-                    break
-
-        # 5. Coincidencia por Código Auxiliar (ej: 4003600006707)
-        if not fila_num and cod_aux and len(cod_aux) > 5:
-            for num_f in range(len(todas_filas), 1, -1):
-                r = todas_filas[num_f - 1]
-                val_aux  = r[col_aux_i].strip().upper() if col_aux_i is not None and col_aux_i < len(r) else ""
-                if val_aux == cod_aux:
-                    fila_num = num_f
-                    break
+    from datetime import date as _date
+    fecha_inv = data.get("fecha_inventario") or _date.today().strftime("%Y-%m-%d")
 
     # Si encontramos o recibimos una fila existente (> 1), completamos esa fila sin duplicar
     if fila_num and fila_num > 1:
@@ -251,11 +282,10 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
             if i is not None and val:
                 fila[i] = str(val)
 
-        tipo_str = (data.get("tipo") or "").upper()
-        es_periferico = any(p in tipo_str for p in ["MONITOR", "TECLADO", "MOUSE", "IMPRESORA"])
+        sc("Fecha de Inventario", fecha_inv)
 
         if not es_periferico:
-            # Solo actualizar los campos del equipo principal
+            # Actualizar campos del computador principal
             if data.get("codigo_bien"):       sc("Código del bien IESS", data["codigo_bien"])
             if data.get("codigo_auxiliar"):   sc("Código Auxiliar (Unnamed: 1)", data["codigo_auxiliar"])
             if data.get("marca"):             sc("Marca del equipo", data["marca"])
@@ -292,12 +322,19 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
                 if data.get("foto_etiqueta"): sc(c_et, img(data["foto_etiqueta"]))
                 if data.get("ocr_raw"):       sc(c_ocr, data["ocr_raw"])
         else:
-            # Periférico: guardar en sus campos correspondientes
+            # Periférico: actualizar sus propios datos en su fila independiente
             if data.get("codigo_bien"):       sc("Código del bien IESS", data["codigo_bien"])
             if data.get("codigo_auxiliar"):   sc("Código Auxiliar (Unnamed: 1)", data["codigo_auxiliar"])
             if data.get("marca"):             sc("Marca del equipo", data["marca"])
             if data.get("modelo"):            sc("Modelo del equipo", data["modelo"])
             if data.get("serie"):             sc("Serie del equipo", data["serie"])
+            if data.get("dependencia"):       sc("Dependencia/Edificio", data["dependencia"])
+            if data.get("ubicacion"):         sc("Ubicación / Area Funcional", data["ubicacion"])
+            if data.get("responsable"):       sc("Nombre del Custodio", data["responsable"])
+            if data.get("cedula_custodio"):   sc("Cédula Custodio", data["cedula_custodio"])
+            if data.get("ciudad"):            sc("Ciudad", data["ciudad"])
+            if data.get("estado"):            sc("Operativo", "SI" if data["estado"] == "Bueno" else "NO")
+            if data.get("id_equipo_principal"): sc("ID_Equipo_Principal", data["id_equipo_principal"])
 
             prefix = tipo_prefix(tipo_str)
             if prefix in FOTO_COLS:
@@ -305,12 +342,16 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
                 if data.get("foto_equipo"):   sc(c_eq, img(data["foto_equipo"]))
                 if data.get("foto_etiqueta"): sc(c_et, img(data["foto_etiqueta"]))
                 if data.get("ocr_raw"):       sc(c_ocr, data["ocr_raw"])
+            else:
+                if data.get("foto_equipo"):   sc("Foto General CPU", img(data["foto_equipo"]))
+                if data.get("foto_etiqueta"): sc("Foto Etiqueta CPU", img(data["foto_etiqueta"]))
+                if data.get("ocr_raw"):       sc("OCR CPU", data["ocr_raw"])
 
         col_end = gspread.utils.rowcol_to_a1(1, len(fila)).rstrip("0123456789")
         ws.update([fila], f"A{fila_num}:{col_end}{fila_num}", value_input_option="USER_ENTERED")
         return fila_num, True
 
-    # Si NO existe, es registro nuevo: append_row
+    # Si NO existe, es registro nuevo: append_row (CADA BIEN TIENE SU PROPIA FILA)
     fila = [""] * len(headers)
 
     def sc(col, val):
@@ -331,7 +372,7 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
     sc("Procesador",                             data.get("procesador", ""))
     sc("Provincia",                              data.get("provincia", "PICHINCHA"))
     sc("Ciudad",                                 data.get("ciudad", "QUITO"))
-    sc("Dependencia/Edificio",                   data.get("dependencia", ""))
+    sc("Dependencia/Edificio",                   data.get("dependencia", "C.C.Q.A.H.D. COTOCOLLAO"))
     sc("Ubicación / Area Funcional",             data.get("ubicacion", ""))
     sc("Cédula Custodio",                        data.get("cedula_custodio", ""))
     sc("Nombre del Custodio",                    data.get("responsable", ""))
@@ -341,22 +382,21 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
     sc("Dirección IP",                           data.get("ip", ""))
     sc("MAC Address",                            data.get("mac", ""))
     sc("Nombre completo del equipo (hostname)",  data.get("hostname", ""))
-    # Fecha de inventario (del .bat o la de hoy)
-    from datetime import date as _date
-    fecha_inv = data.get("fecha_inventario") or _date.today().strftime("%Y-%m-%d")
-    id_unico  = data.get("id_unico", str(uuid.uuid4()))
+    
+    id_unico = data.get("id_unico", str(uuid.uuid4()))
     sc("ID_Unico",            f"{fecha_inv} | {id_unico[:8].upper()}")
     sc("Fecha de Inventario", fecha_inv)
-
+    sc("ID_Equipo_Principal", data.get("id_equipo_principal", ""))
 
     # Marcar casilla del tipo
-    tipo_str = data.get("tipo", "").upper()
     if "TODO EN UNO" in tipo_str or "AIO" in tipo_str:
         sc("COMPUTADOR TODO EN UNO", "1")
     elif "PORTÁTIL" in tipo_str or "PORTATIL" in tipo_str:
         sc("COMPUTADOR PORTÁTIL", "1")
     elif "ESCRITORIO" in tipo_str or "CPU" in tipo_str:
         sc("COMPUTADOR DE ESCRITORIO", "1")
+    elif "SERVIDOR" in tipo_str:
+        sc("SERVIDOR FÍSICO", "1")
 
     prefix = tipo_prefix(data.get("tipo", ""))
     if prefix in FOTO_COLS:
@@ -364,6 +404,10 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
         sc(c_eq,  img(data.get("foto_equipo", "")))
         sc(c_et,  img(data.get("foto_etiqueta", "")))
         sc(c_ocr, data.get("ocr_raw", ""))
+    else:
+        sc("Foto General CPU",  img(data.get("foto_equipo", "")))
+        sc("Foto Etiqueta CPU", img(data.get("foto_etiqueta", "")))
+        sc("OCR CPU",           data.get("ocr_raw", ""))
 
     ws.append_row(fila, value_input_option="USER_ENTERED")
     nueva_fila = len(todas_filas) + 1
@@ -429,6 +473,8 @@ def leer_sheets() -> list:
             "foto_teclado":  get_col(r, "Foto General Teclado"),
             "foto_mouse":    get_col(r, "Foto General Mouse"),
             "foto_impresora":get_col(r, "Foto General Impresora"),
+            "id_equipo_principal": get_col(r, "ID_Equipo_Principal"),
+            "fecha_inventario":    get_col(r, "Fecha de Inventario"),
         })
     return result
 
@@ -519,6 +565,8 @@ async def crear_registro(
     estado:            str  = Form("Bueno"),
     ocr_raw:           str  = Form(""),
     fila:              Optional[int] = Form(None),
+    id_equipo_principal: str = Form(""),
+    fecha_inventario:    str = Form(""),
     foto_etiqueta: Optional[UploadFile] = File(None),
     foto_auxiliar: Optional[UploadFile] = File(None),
     foto_equipo:   Optional[UploadFile] = File(None),
@@ -555,6 +603,8 @@ async def crear_registro(
         cedula_custodio=cedula_custodio, responsable=responsable,
         proveedor=proveedor, usuarios=usuarios,
         ip=ip, mac=mac, hostname=hostname, estado=estado,
+        id_equipo_principal=id_equipo_principal,
+        fecha_inventario=fecha_inventario,
         foto_equipo=url_equipo or "",
         foto_etiqueta=foto_etiqueta_final,
         ocr_raw=ocr_raw,
