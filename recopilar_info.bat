@@ -111,6 +111,14 @@ set /p "COD_BIEN= Codigo del Bien IESS (ej: IM-0511): "
 set "COD_AUX="
 set /p "COD_AUX= Codigo Auxiliar / Barras (ej: 27038980000661): "
 
+:: ── Fecha de inventario (hoy) ────────────────────
+for /f "tokens=1-3 delims=/ " %%a in ('date /t') do (
+    set "DIA=%%a"
+    set "MES=%%b"
+    set "ANIO=%%c"
+)
+set "FECHA_INV=%ANIO%-%MES%-%DIA%"
+
 :: ── Generar JSON ──────────────────────────────────
 set "OUTFILE=%~dp0info.json"
 
@@ -130,7 +138,8 @@ echo   "ip": "%IP%",
 echo   "tipo": "%TIPO%",
 echo   "codigo_bien": "!COD_BIEN!",
 echo   "codigo_auxiliar": "!COD_AUX!",
-echo   "usuarios": "%USUARIOS%"
+echo   "usuarios": "%USUARIOS%",
+echo   "fecha_inventario": "%FECHA_INV%"
 echo }
 ) > "%OUTFILE%"
 

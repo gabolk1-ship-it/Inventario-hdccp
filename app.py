@@ -341,7 +341,13 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
     sc("Dirección IP",                           data.get("ip", ""))
     sc("MAC Address",                            data.get("mac", ""))
     sc("Nombre completo del equipo (hostname)",  data.get("hostname", ""))
-    sc("ID_Unico",                               data.get("id_unico", str(uuid.uuid4())))
+    # Fecha de inventario (del .bat o la de hoy)
+    from datetime import date as _date
+    fecha_inv = data.get("fecha_inventario") or _date.today().strftime("%Y-%m-%d")
+    id_unico  = data.get("id_unico", str(uuid.uuid4()))
+    sc("ID_Unico", f"{fecha_inv} | {id_unico[:8].upper()}")
+    sc("Fecha de compra del bien", fecha_inv)
+
 
     # Marcar casilla del tipo
     tipo_str = data.get("tipo", "").upper()
