@@ -522,13 +522,13 @@
         <input type="text" id="p-filtro-equipo" placeholder="Escribe marca, serie o custodio para buscar..."
                oninput="filtrarEquipos(this.value)" style="margin-bottom:5px">
         <select id="p-equipo">
-          <option value="">-- Sin vincular a computador (Bodega / Área / Independiente) --</option>
+          <option value="">-- Sin vincular a computador (Área / Independiente) --</option>
         </select>
       </div>
       <div class="fields-grid" style="margin-top:12px">
         <div class="field-group">
-          <label>Custodio / Responsable <span style="font-weight:400;color:#64748b">(Persona o BODEGA)</span></label>
-          <input type="text" id="p-custodio-display" placeholder="Ej: SANDRA ERAZO o BODEGA">
+          <label>Custodio / Responsable <span style="font-weight:400;color:#64748b">(Persona o Área)</span></label>
+          <input type="text" id="p-custodio-display" placeholder="Ej: SANDRA ERAZO">
         </div>
         <div class="field-group">
           <label>Cédula Custodio</label>
@@ -540,7 +540,7 @@
         </div>
         <div class="field-group">
           <label>Ubicación / Área Funcional</label>
-          <input type="text" id="p-ubicacion-display" placeholder="Ej: BODEGA GENERAL, CONSULTORIO 2, ADMISIÓN">
+          <input type="text" id="p-ubicacion-display" placeholder="Ej: CONSULTORIO 2, ADMISIÓN, ARCHIVO">
         </div>
       </div>
     </div>
@@ -858,7 +858,7 @@ function poblarEquipos(data) {
 function renderEquipos(filtro) {
   const sel = document.getElementById('p-equipo');
   const term = safeStr(filtro).toLowerCase();
-  const opts = ['<option value="">-- Sin vincular a computador (Bodega / Área / Independiente) --</option>'];
+  const opts = ['<option value="">-- Sin vincular a computador (Área / Independiente) --</option>'];
   listaEquipos.forEach(eq => {
     const fullSearch = `${eq.marca} ${eq.modelo} ${eq.serie} ${eq.responsable} ${eq.codigo_bien}`.toLowerCase();
     if (!term || fullSearch.includes(term)) {
