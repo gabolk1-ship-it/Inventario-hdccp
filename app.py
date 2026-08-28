@@ -345,8 +345,8 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
     from datetime import date as _date
     fecha_inv = data.get("fecha_inventario") or _date.today().strftime("%Y-%m-%d")
     id_unico  = data.get("id_unico", str(uuid.uuid4()))
-    sc("ID_Unico", f"{fecha_inv} | {id_unico[:8].upper()}")
-    sc("Fecha de compra del bien", fecha_inv)
+    sc("ID_Unico",            f"{fecha_inv} | {id_unico[:8].upper()}")
+    sc("Fecha de Inventario", fecha_inv)
 
 
     # Marcar casilla del tipo
