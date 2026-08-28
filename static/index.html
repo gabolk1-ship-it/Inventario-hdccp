@@ -1353,7 +1353,11 @@ async function guardar(mod) {
       fd.append('ocr_raw',         document.getElementById('p-ocr-text')?.textContent || '');
 
       // Vincular con el CPU si se seleccionó uno
-      if (eqRec.id_unico) {
+      const selEq = document.getElementById('p-equipo');
+      if (selEq && selEq.value === 'recien_guardado') {
+        const idPrin = selEq.dataset.nuevoId || ('CPU S/N: ' + selEq.dataset.nuevaSerie);
+        if (idPrin) fd.append('id_equipo_principal', idPrin);
+      } else if (eqRec.id_unico) {
         fd.append('id_equipo_principal', eqRec.id_unico);
       } else if (eqRec.serie) {
         fd.append('id_equipo_principal', 'CPU S/N: ' + eqRec.serie);
@@ -1388,9 +1392,35 @@ async function guardar(mod) {
     const res  = await fetch(`${API}/api/inventario`, {method:'POST', body:fd});
     const json = await res.json().catch(() => null);
     if (res.ok && json) {
-      toast(json.message || 'Guardado correctamente en Google Sheets', 'ok');
-      limpiarFormulario(mod);
-      await cargarSheetData();  // refresca listas
+      if (mod === 'completo') {
+        const g = id => document.getElementById(id)?.value || '';
+        const custVal = g('c1-custodio');
+        const [cedula, responsable] = custVal.split('|');
+        const cedulaCust = cedula || g('c1-cedula');
+        const respCust   = responsable || g('c1-filtro-custodio');
+
+        const savedCpu = {
+          id_unico: json.id_unico || '',
+          serie: g('c1-serie'),
+          marca: g('c1-marca'),
+          modelo: g('c1-modelo'),
+          tipo: g('c1-tipo') || 'COMPUTADOR DE ESCRITORIO',
+          responsable: respCust,
+          cedula: cedulaCust,
+          dependencia: g('c1-dependencia') || 'C.C.Q.A.H.D. COTOCOLLAO',
+          ubicacion: g('c1-ubicacion'),
+          fila: json.fila || ''
+        };
+        ultimoCpuGuardado = savedCpu;
+        toast(json.message || 'Computador guardado correctamente en Google Sheets', 'ok');
+        limpiarFormulario('completo');
+        await cargarSheetData();
+        mostrarModalVincular(savedCpu);
+      } else {
+        toast(json.message || 'Componente guardado correctamente en Google Sheets', 'ok');
+        limpiarFormulario(mod);
+        await cargarSheetData();
+      }
     } else if (res.status === 413) {
       toast('Las fotos exceden el tamaño máximo permitido por el servidor.', 'err');
     } else {
@@ -1600,9 +1630,101 @@ function guardarClaveIA() {
   cerrarModalIA();
 }
 
+/* ══ Modal Vinculación Rápida de Periféricos ══ */
+let ultimoCpuGuardado = null;
+
+function mostrarModalVincular(cpu) {
+  const m = document.getElementById('modal-vincular');
+  const det = document.getElementById('modal-vincular-detalles');
+  if (det) {
+    det.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div><strong>🖥️ Equipo:</strong> ${cpu.marca || ''} ${cpu.modelo || ''}</div>
+        <div><strong>🔢 Serie:</strong> ${cpu.serie || 'S/S'}</div>
+        <div><strong>👤 Custodio:</strong> ${cpu.responsable || 'Sin custodio'}</div>
+        <div><strong>📍 Ubicación:</strong> ${cpu.ubicacion || cpu.dependencia || 'Cotocollao'}</div>
+      </div>
+    `;
+  }
+  if (m) m.classList.add('open');
+}
+
+function cerrarModalVincular(limpiar) {
+  const m = document.getElementById('modal-vincular');
+  if (m) m.classList.remove('open');
+  if (limpiar) ultimoCpuGuardado = null;
+}
+
+function continuarAPerifericos() {
+  if (!ultimoCpuGuardado) return;
+  const cpu = ultimoCpuGuardado;
+  cerrarModalVincular(false);
+
+  // Activar pestaña de periféricos
+  selectMod('periferico');
+
+  // Rellenar campos de asignación en Módulo 2
+  const cCust = document.getElementById('p-custodio-display');
+  const cCed  = document.getElementById('p-cedula-display');
+  const cDep  = document.getElementById('p-dependencia-display');
+  const cUbi  = document.getElementById('p-ubicacion-display');
+  if (cCust) cCust.value = cpu.responsable || '';
+  if (cCed)  cCed.value  = cpu.cedula || '';
+  if (cDep)  cDep.value  = cpu.dependencia || 'C.C.Q.A.H.D. COTOCOLLAO';
+  if (cUbi)  cUbi.value  = cpu.ubicacion || '';
+
+  // Configurar select p-equipo con este computador vinculado
+  const sel = document.getElementById('p-equipo');
+  if (sel) {
+    const label = `💻 ${cpu.marca} ${cpu.modelo} · S/N: ${cpu.serie || 'S/S'} (${cpu.responsable || 'Sin custodio'})`;
+    let optExistente = Array.from(sel.options).find(o => o.text.includes(cpu.serie) && cpu.serie && cpu.serie.length > 3);
+    if (optExistente) {
+      sel.value = optExistente.value;
+    } else {
+      const optNueva = new Option(`⭐ [Recién guardado] ${label}`, 'recien_guardado', true, true);
+      sel.add(optNueva, 1);
+      sel.value = 'recien_guardado';
+    }
+    sel.dataset.nuevoId = cpu.id_unico || '';
+    sel.dataset.nuevaSerie = cpu.serie || '';
+    sel.dataset.nuevoCustodio = cpu.responsable || '';
+    sel.dataset.nuevaCedula = cpu.cedula || '';
+    sel.dataset.nuevaDep = cpu.dependencia || '';
+    sel.dataset.nuevaUbi = cpu.ubicacion || '';
+  }
+
+  // Activar chip Monitor por defecto
+  const chipMon = document.getElementById('chip-monitor');
+  if (chipMon) selPeri('MONITOR', chipMon);
+
+  toast('Paso 2: Toma foto del Monitor o etiqueta para este equipo', 'ok');
+}
+
 /* ══ Init ══ */
 cargarSheetData();
 </script>
+
+<!-- Modal Continuar con Periféricos -->
+<div class="modal-overlay" id="modal-vincular" onclick="if(event.target===this)cerrarModalVincular(false)">
+  <div class="modal-card" style="border-top:5px solid #059669;max-width:500px">
+    <div class="modal-title" style="color:#065f46">
+      <span style="font-size:24px">🎉</span> Computador Guardado con Éxito
+    </div>
+    <div class="modal-body" style="margin-bottom:8px">
+      El computador ha sido guardado correctamente en Google Sheets. ¿Deseas vincular sus periféricos (Monitor, Teclado, Mouse...) a este equipo ahora mismo?
+    </div>
+    <div id="modal-vincular-detalles" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:12px;font-size:13px;color:#166534;margin-bottom:16px">
+    </div>
+    <div class="modal-actions" style="flex-direction:column;gap:8px">
+      <button class="btn-modal-save" style="background:linear-gradient(135deg,#059669,#047857);padding:13px 18px;font-size:14px;font-weight:800;width:100%" onclick="continuarAPerifericos()">
+        ➕ Continuar agregando Periféricos a este equipo
+      </button>
+      <button class="btn-modal-cancel" style="width:100%;text-align:center" onclick="cerrarModalVincular(true)">
+        Terminar / Registrar otro Computador
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal Configurar Clave Gemini IA -->
 <div class="modal-overlay" id="modal-ia" onclick="if(event.target===this)cerrarModalIA()">
