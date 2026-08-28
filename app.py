@@ -150,6 +150,24 @@ def img(url: str) -> str:
         return f'=HYPERLINK("{url_escaped}";"Ver foto")'
     return ""
 
+def limpiar_ocr(texto: str) -> str:
+    """Limpia el texto OCR para guardar solo información técnica esencial, sin textos de IA ni viñetas."""
+    if not texto:
+        return ""
+    lineas = []
+    for l in texto.splitlines():
+        l_s = l.strip()
+        # Filtrar encabezados de IA o emojis
+        if any(w in l_s.lower() for w in ["agente ia", "gemini", "identificación completa", "robot"]):
+            continue
+        if any(w in l_s.lower() for w in ["etiqueta de inventario", "etiqueta de activo", "la marca se determina", "info:"]):
+            continue
+        # Limpiar caracteres especiales / viñetas
+        l_s = "".join(c for c in l_s if ord(c) < 10000).lstrip("•*- ").strip()
+        if l_s and not any(w in l_s.lower() for w in ["agente ia", "gemini", "info:"]):
+            lineas.append(l_s)
+    return " | ".join(lineas) if lineas else texto.strip()
+
 FOTO_COLS = {
     "CPU":       ("Foto General CPU",       "Foto Etiqueta CPU",       "OCR CPU"),
     "Monitor":   ("Foto General Monitor",   "Foto Etiqueta Monitor",   "OCR Monitor"),
@@ -315,12 +333,17 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
             elif "ESCRITORIO" in tipo_str or "CPU" in tipo_str:
                 sc("COMPUTADOR DE ESCRITORIO", "1")
 
+            ocr_val = limpiar_ocr(data.get("ocr_raw", ""))
             prefix = tipo_prefix(tipo_str)
             if prefix in FOTO_COLS:
                 c_eq, c_et, c_ocr = FOTO_COLS[prefix]
                 if data.get("foto_equipo"):   sc(c_eq, img(data["foto_equipo"]))
                 if data.get("foto_etiqueta"): sc(c_et, img(data["foto_etiqueta"]))
-                if data.get("ocr_raw"):       sc(c_ocr, data["ocr_raw"])
+                if ocr_val:                   sc(c_ocr, ocr_val)
+            else:
+                if data.get("foto_equipo"):   sc("Foto General CPU", img(data["foto_equipo"]))
+                if data.get("foto_etiqueta"): sc("Foto Etiqueta CPU", img(data["foto_etiqueta"]))
+                if ocr_val:                   sc("OCR CPU", ocr_val)
         else:
             # Periférico: actualizar sus propios datos en su fila independiente
             if data.get("codigo_bien"):       sc("Código del bien IESS", data["codigo_bien"])
@@ -336,16 +359,17 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
             if data.get("estado"):            sc("Operativo", "SI" if data["estado"] == "Bueno" else "NO")
             if data.get("id_equipo_principal"): sc("ID_Equipo_Principal", data["id_equipo_principal"])
 
+            ocr_val = limpiar_ocr(data.get("ocr_raw", ""))
             prefix = tipo_prefix(tipo_str)
             if prefix in FOTO_COLS:
                 c_eq, c_et, c_ocr = FOTO_COLS[prefix]
                 if data.get("foto_equipo"):   sc(c_eq, img(data["foto_equipo"]))
                 if data.get("foto_etiqueta"): sc(c_et, img(data["foto_etiqueta"]))
-                if data.get("ocr_raw"):       sc(c_ocr, data["ocr_raw"])
+                if ocr_val:                   sc(c_ocr, ocr_val)
             else:
                 if data.get("foto_equipo"):   sc("Foto General CPU", img(data["foto_equipo"]))
                 if data.get("foto_etiqueta"): sc("Foto Etiqueta CPU", img(data["foto_etiqueta"]))
-                if data.get("ocr_raw"):       sc("OCR CPU", data["ocr_raw"])
+                if ocr_val:                   sc("OCR CPU", ocr_val)
 
         col_end = gspread.utils.rowcol_to_a1(1, len(fila)).rstrip("0123456789")
         ws.update([fila], f"A{fila_num}:{col_end}{fila_num}", value_input_option="USER_ENTERED")
@@ -398,16 +422,17 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
     elif "SERVIDOR" in tipo_str:
         sc("SERVIDOR FÍSICO", "1")
 
+    ocr_val = limpiar_ocr(data.get("ocr_raw", ""))
     prefix = tipo_prefix(data.get("tipo", ""))
     if prefix in FOTO_COLS:
         c_eq, c_et, c_ocr = FOTO_COLS[prefix]
         sc(c_eq,  img(data.get("foto_equipo", "")))
         sc(c_et,  img(data.get("foto_etiqueta", "")))
-        sc(c_ocr, data.get("ocr_raw", ""))
+        if ocr_val: sc(c_ocr, ocr_val)
     else:
         sc("Foto General CPU",  img(data.get("foto_equipo", "")))
         sc("Foto Etiqueta CPU", img(data.get("foto_etiqueta", "")))
-        sc("OCR CPU",           data.get("ocr_raw", ""))
+        if ocr_val: sc("OCR CPU", ocr_val)
 
     ws.append_row(fila, value_input_option="USER_ENTERED")
     nueva_fila = len(todas_filas) + 1
@@ -753,7 +778,8 @@ Reglas de extracción:
 - "serie": Número de serie, Serial Number, S/N, Service Tag o N/S. Cuidado crítico: no confundir O con 0, I con 1, 8 con B.
 - "tipo": Tipo de bien si es evidente (COMPUTADOR DE ESCRITORIO, COMPUTADOR TODO EN UNO, COMPUTADOR PORTÁTIL, MONITOR, TECLADO, MOUSE, IMPRESORA). Si es All-in-One, pon "COMPUTADOR TODO EN UNO".
 - "mac": Dirección MAC física de red si está impresa (ej: 00:1A:2B:3C:4D:5E).
-- "texto_leido": Todo el texto relevante que logres transcribir de la etiqueta.
+- "observaciones": NO agregues textos de relleno, párrafos explicativos ni introducciones. Deja "" a menos que haya un daño físico severo.
+- "texto_leido": Solo la transcripción limpia y directa de los datos visibles en la etiqueta.
 """
 
         modelos = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash"]

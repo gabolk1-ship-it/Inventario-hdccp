@@ -1054,22 +1054,19 @@ async function runOCR(pfx, modo = 'bien') {
 
     if (res.success && res.datos) {
       fill.style.width = '100%';
-      st.textContent = `✅ ${res.motor || 'Agente IA'}: Identificación completa`;
+      st.textContent = `✅ Identificación completa`;
       const d = res.datos;
 
-      const lineas = [
-        `🤖 ${res.motor || 'Agente IA'}:`,
-        d.marca ? `• Marca: ${d.marca}` : null,
-        d.modelo ? `• Modelo: ${d.modelo}` : null,
-        d.serie ? `• Serie (S/N): ${d.serie}` : null,
-        d.codigo_bien ? `• Código IESS: ${d.codigo_bien}` : null,
-        d.codigo_auxiliar ? `• Cód. Auxiliar: ${d.codigo_auxiliar}` : null,
-        d.mac ? `• MAC: ${d.mac}` : null,
-        d.tipo ? `• Tipo: ${d.tipo}` : null,
-        d.observaciones ? `• Info: ${d.observaciones}` : null,
+      const datosLimpio = [
+        d.codigo_bien ? `Bien: ${d.codigo_bien}` : null,
+        d.codigo_auxiliar ? `Aux: ${d.codigo_auxiliar}` : null,
+        d.serie ? `S/N: ${d.serie}` : null,
+        d.marca ? `Marca: ${d.marca}` : null,
+        d.modelo ? `Modelo: ${d.modelo}` : null,
+        d.mac ? `MAC: ${d.mac}` : null,
       ].filter(Boolean);
 
-      txt.textContent = lineas.join('\n') || d.texto_leido || 'Datos identificados con éxito.';
+      txt.textContent = datosLimpio.join(' | ') || d.texto_leido || 'Datos identificados';
 
       if (d.serie) setCampoConIA(`${prefix}-serie`, d.serie);
       if (d.marca) setCampoConIA(`${prefix}-marca`, d.marca);
