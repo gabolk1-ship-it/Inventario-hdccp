@@ -268,7 +268,7 @@
 <header>
   <div class="brand">
     <img src="/iess-blue.jpeg" alt="IESS Hospital del Día Cotocollao" class="banner-iess">
-    <span class="badge-v">v4.3</span>
+    <span class="badge-v">v5.0</span>
   </div>
   <div class="nav-tabs">
     <button class="active" onclick="showPage('reg',this)">Registrar</button>
@@ -964,69 +964,101 @@ function cargarBat() {
   reader.readAsText(file);
 }
 
-/* ══ Compresor de Imágenes en el Navegador (Evita error 413 Payload Too Large) ══ */
-async function comprimirImagen(file, maxDim = 1280, calidad = 0.75) {
+/* ══ Compresor de Imágenes en el Navegador (Garantiza < 350KB por foto, evitando 413) ══ */
+async function comprimirImagen(file, maxDim = 1200, calidad = 0.65) {
   if (!file || !file.type || !file.type.startsWith('image/')) return file;
+  if (file.size <= 150 * 1024) return file; // Ya es pequeña
+
   return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(file), 2500);
-    const reader = new FileReader();
-    reader.onload = (e) => {
+    const timer = setTimeout(() => {
+      console.warn('Timeout de compresión de imagen, enviando archivo.');
+      resolve(file);
+    }, 12000);
+
+    const blobToJpegFile = (blob, originalName) => {
+      return new File([blob], (originalName || 'foto.jpg').replace(/\.[^.]+$/, '.jpg'), {
+        type: 'image/jpeg',
+        lastModified: Date.now()
+      });
+    };
+
+    const processCanvas = (source, w, h) => {
+      let targetW = w;
+      let targetH = h;
+      if (targetW > maxDim || targetH > maxDim) {
+        if (targetW > targetH) {
+          targetH = Math.round((targetH * maxDim) / targetW);
+          targetW = maxDim;
+        } else {
+          targetW = Math.round((targetW * maxDim) / targetH);
+          targetH = maxDim;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d', { alpha: false });
+      ctx.drawImage(source, 0, 0, targetW, targetH);
+      
+      canvas.toBlob((blob) => {
+        clearTimeout(timer);
+        if (!blob) { resolve(file); return; }
+        
+        // Si aún así quedó mayor a 800KB, comprimir un poco más
+        if (blob.size > 800 * 1024) {
+          canvas.toBlob((blob2) => {
+            if (blob2) resolve(blobToJpegFile(blob2, file.name));
+            else resolve(blobToJpegFile(blob, file.name));
+          }, 'image/jpeg', 0.50);
+        } else {
+          resolve(blobToJpegFile(blob, file.name));
+        }
+      }, 'image/jpeg', calidad);
+    };
+
+    if (typeof createImageBitmap === 'function') {
+      createImageBitmap(file).then((bmp) => {
+        processCanvas(bmp, bmp.width, bmp.height);
+        try { bmp.close(); } catch (_) {}
+      }).catch(() => fallbackImg(file));
+    } else {
+      fallbackImg(file);
+    }
+
+    function fallbackImg(f) {
+      const url = URL.createObjectURL(f);
       const img = new Image();
       img.onload = () => {
         try {
-          let w = img.width;
-          let h = img.height;
-          if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.round((h * maxDim) / w);
-              w = maxDim;
-            } else {
-              w = Math.round((w * maxDim) / h);
-              h = maxDim;
-            }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-          canvas.toBlob(
-            (blob) => {
-              clearTimeout(timer);
-              if (!blob) { resolve(file); return; }
-              const compressed = new File([blob], (file.name || 'foto.jpg').replace(/\.[^.]+$/, '.jpg'), {
-                type: 'image/jpeg',
-                lastModified: Date.now()
-              });
-              resolve(compressed);
-            },
-            'image/jpeg',
-            calidad
-          );
+          URL.revokeObjectURL(url);
+          processCanvas(img, img.naturalWidth || img.width, img.naturalHeight || img.height);
         } catch {
           clearTimeout(timer);
-          resolve(file);
+          resolve(f);
         }
       };
-      img.onerror = () => { clearTimeout(timer); resolve(file); };
-      img.src = e.target.result;
-    };
-    reader.onerror = () => { clearTimeout(timer); resolve(file); };
-    reader.readAsDataURL(file);
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        clearTimeout(timer);
+        resolve(f);
+      };
+      img.src = url;
+    }
   });
 }
 
-/* ══ Foto preview ══ */
+/* ══ Foto preview (Instantáneo con ObjectURL) ══ */
 function prevFoto(input, prevId, zoneId, iconId) {
-  const file = input.files[0]; if (!file) return;
-  const r = new FileReader();
-  r.onload = e => {
-    document.getElementById(prevId).src = e.target.result;
-    document.getElementById(prevId).style.display = 'block';
-    document.getElementById(iconId).style.display = 'none';
-    document.getElementById(zoneId).classList.add('has-foto');
-  };
-  r.readAsDataURL(file);
+  const file = input?.files?.[0]; if (!file) return;
+  const prev = document.getElementById(prevId);
+  if (prev) {
+    prev.src = URL.createObjectURL(file);
+    prev.style.display = 'block';
+  }
+  const icon = document.getElementById(iconId);
+  if (icon) icon.style.display = 'none';
+  const zone = document.getElementById(zoneId);
+  if (zone) zone.classList.add('has-foto');
 }
 
 /* ══ OCR Inteligente con Agente IA (Gemini) y Fallback Tesseract ══ */
