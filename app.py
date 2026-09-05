@@ -44,21 +44,57 @@ def get_sheet():
             return ws
     return sh.get_worksheet(0)
 
+# ─── Cloudflare R2 Storage (S3 Compatible) ────────────────────────────────────
+R2_ENDPOINT   = os.environ.get("R2_ENDPOINT", "https://48540cc26871e66437e96bc37d8cea4a.r2.cloudflarestorage.com").strip()
+R2_BUCKET     = os.environ.get("R2_BUCKET", "inventario").strip()
+R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY_ID", "").strip()
+R2_SECRET_KEY = os.environ.get("R2_SECRET_ACCESS_KEY", "").strip()
+R2_PUBLIC_URL = os.environ.get("R2_PUBLIC_URL", "").strip()
+
+def subir_a_r2(contenido: bytes, nombre: str, mime: str = "image/jpeg") -> Optional[str]:
+    """Sube una fotografía a Cloudflare R2 y retorna la URL pública permanente."""
+    if not (R2_ACCESS_KEY and R2_SECRET_KEY):
+        return None
+    try:
+        import boto3
+        from botocore.config import Config
+        s3 = boto3.client(
+            service_name="s3",
+            endpoint_url=R2_ENDPOINT,
+            aws_access_key_id=R2_ACCESS_KEY,
+            aws_secret_access_key=R2_SECRET_KEY,
+            config=Config(signature_version="s3v4"),
+            region_name="auto"
+        )
+        s3.put_object(
+            Bucket=R2_BUCKET,
+            Key=nombre,
+            Body=contenido,
+            ContentType=mime
+        )
+        if R2_PUBLIC_URL:
+            base = R2_PUBLIC_URL.rstrip('/')
+            url = f"{base}/{nombre}"
+        else:
+            url = f"{R2_ENDPOINT}/{R2_BUCKET}/{nombre}"
+        print(f"Foto subida a Cloudflare R2 con éxito: {url}")
+        return url
+    except Exception as ex_r2:
+        print(f"Aviso Cloudflare R2: {ex_r2}, probando siguiente almacenamiento...")
+        return None
+
 # ─── Google Drive ──────────────────────────────────────────────────────────────
 DRIVE_FOLDER_ID = os.environ.get("DRIVE_FOLDER_ID", "").strip() or "1JYYxW_iFPDVXOuySOCbsiv6oWOBB3c5w"
 
 def subir_a_drive(contenido: bytes, nombre: str, mime: str = "image/jpeg") -> str:
     """
     Sube un archivo a Google Drive mediante la API REST v3 y retorna la URL pública.
-    Si Google Drive falla (por restricción de cuota 403 en cuentas de servicio),
-    utiliza almacenamiento en la nube de alta disponibilidad para no perder la fotografía.
     """
     import io, json, requests
     import google.auth.transport.requests
 
     folder_id = os.environ.get("DRIVE_FOLDER_ID", "").strip() or DRIVE_FOLDER_ID
 
-    # 1. Intentar subir a Google Drive
     try:
         creds = get_google_creds()
         auth_req = google.auth.transport.requests.Request()
@@ -90,13 +126,31 @@ def subir_a_drive(contenido: bytes, nombre: str, mime: str = "image/jpeg") -> st
             except:
                 pass
             return f"https://drive.google.com/thumbnail?id={file_id}&sz=w600"
-        else:
-            print(f"Drive respondió HTTP {r_up.status_code}, usando fallback de imagen...")
     except Exception as ex_d:
         print(f"Aviso Drive: {ex_d}, usando fallback de imagen...")
 
-    # 2. Fallback de alta disponibilidad para que las fotos SIEMPRE queden grabadas
+    return ""
+
+def subir_foto_nube(contenido: bytes, nombre: str, mime: str = "image/jpeg") -> str:
+    """
+    Cadena de almacenamiento de fotos:
+    1. Cloudflare R2 (si tiene claves configuradas)
+    2. Google Drive institucional
+    3. Fallback de alta disponibilidad
+    """
+    # 1. Cloudflare R2
+    url_r2 = subir_a_r2(contenido, nombre, mime)
+    if url_r2:
+        return url_r2
+
+    # 2. Google Drive
+    url_drive = subir_a_drive(contenido, nombre, mime)
+    if url_drive:
+        return url_drive
+
+    # 3. Fallback
     try:
+        import io, requests
         r_fb = requests.post(
             "https://freeimage.host/api/1/upload",
             data={"key": "6d207e02198a847aa98d0a2a901485a5", "action": "upload", "format": "json"},
@@ -106,16 +160,14 @@ def subir_a_drive(contenido: bytes, nombre: str, mime: str = "image/jpeg") -> st
         if r_fb.status_code == 200:
             url_img = r_fb.json().get("image", {}).get("url")
             if url_img:
-                print(f"Foto subida con éxito (fallback): {url_img}")
                 return url_img
     except Exception as ex_fb:
         print(f"Error en fallback de imagen: {ex_fb}")
 
     return ""
 
-
 async def procesar_imagen(archivo: Optional[UploadFile]) -> Optional[str]:
-    """Lee el UploadFile, lo sube a Drive y retorna la URL sin bloquear la app."""
+    """Lee el UploadFile, lo sube a R2 / Drive y retorna la URL sin bloquear la app."""
     if not archivo or not archivo.filename:
         return None
     try:
@@ -123,9 +175,9 @@ async def procesar_imagen(archivo: Optional[UploadFile]) -> Optional[str]:
         ext  = os.path.splitext(archivo.filename)[1].lower() or ".jpg"
         mime = "image/png" if ext == ".png" else "image/jpeg"
         nombre = f"inventario_{uuid.uuid4().hex}{ext}"
-        return subir_a_drive(contenido, nombre, mime)
+        return subir_foto_nube(contenido, nombre, mime)
     except Exception as e:
-        print(f"Aviso: No se pudo subir foto a Drive: {e}")
+        print(f"Aviso: No se pudo subir foto: {e}")
         return None
 
 # ─── Helpers Sheets ────────────────────────────────────────────────────────────
