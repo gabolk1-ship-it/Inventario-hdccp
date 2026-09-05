@@ -47,8 +47,8 @@ def get_sheet():
 # ─── Cloudflare R2 Storage (S3 Compatible) ────────────────────────────────────
 R2_ENDPOINT   = os.environ.get("R2_ENDPOINT", "https://48540cc26871e66437e96bc37d8cea4a.r2.cloudflarestorage.com").strip()
 R2_BUCKET     = os.environ.get("R2_BUCKET", "inventario").strip()
-R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY_ID", "").strip()
-R2_SECRET_KEY = os.environ.get("R2_SECRET_ACCESS_KEY", "").strip()
+R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY_ID", "7457b6f56996b7d12693bdb8aa81897b").strip()
+R2_SECRET_KEY = os.environ.get("R2_SECRET_ACCESS_KEY", "858b990867802a1967272fcd3cf17c6c9fd13e321bac30e84164318bc7700f41").strip()
 R2_PUBLIC_URL = os.environ.get("R2_PUBLIC_URL", "https://pub-3321b455c0e04518b3bfeac02d9ec828.r2.dev").strip()
 
 def subir_a_r2(contenido: bytes, nombre: str, mime: str = "image/jpeg") -> Optional[str]:
