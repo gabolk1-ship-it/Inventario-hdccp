@@ -549,12 +549,13 @@
     <div class="card">
       <div class="card-header">Elemento a Registrar / Complementar</div>
       <div class="peri-grid">
-        <div class="peri-chip" id="chip-monitor" onclick="selPeri('MONITOR',this)">Monitor</div>
-        <div class="peri-chip" id="chip-mouse" onclick="selPeri('MOUSE',this)">Mouse</div>
-        <div class="peri-chip" id="chip-teclado" onclick="selPeri('TECLADO',this)">Teclado</div>
-        <div class="peri-chip" id="chip-impresora" onclick="selPeri('IMPRESORA',this)">Impresora</div>
-        <div class="peri-chip" id="chip-ups" onclick="selPeri('UPS',this)">UPS / Regulador</div>
-        <div class="peri-chip" id="chip-escaner" onclick="selPeri('ESCÁNER',this)">Escáner / Lector</div>
+        <div class="peri-chip" id="chip-cpu" onclick="selPeri('CPU',this)">💻 CPU / Chasis</div>
+        <div class="peri-chip" id="chip-monitor" onclick="selPeri('MONITOR',this)">🖥️ Monitor</div>
+        <div class="peri-chip" id="chip-teclado" onclick="selPeri('TECLADO',this)">⌨️ Teclado</div>
+        <div class="peri-chip" id="chip-mouse" onclick="selPeri('MOUSE',this)">🖱️ Mouse</div>
+        <div class="peri-chip" id="chip-impresora" onclick="selPeri('IMPRESORA',this)">🖨️ Impresora</div>
+        <div class="peri-chip" id="chip-ups" onclick="selPeri('UPS',this)">🔋 UPS / Regulador</div>
+        <div class="peri-chip" id="chip-escaner" onclick="selPeri('ESCÁNER',this)">📟 Escáner / Lector</div>
       </div>
       <input type="hidden" id="p-tipo" value="">
     </div>
@@ -852,6 +853,19 @@ function poblarEquipos(data) {
     if (cCed)  cCed.value  = r.cedula || '';
     if (cDep)  cDep.value  = r.dependencia || 'C.C.Q.A.H.D. COTOCOLLAO';
     if (cUbi)  cUbi.value  = r.ubicacion || '';
+
+    if (periActivo === 'CPU') {
+      const pMarca = document.getElementById('p-marca');
+      const pMod   = document.getElementById('p-modelo');
+      const pSer   = document.getElementById('p-serie');
+      const pBien  = document.getElementById('p-codigo-bien');
+      const pAux   = document.getElementById('p-codigo-aux');
+      if (pMarca) pMarca.value = r.marca || '';
+      if (pMod)   pMod.value   = r.modelo || '';
+      if (pSer)   pSer.value   = r.serie || '';
+      if (pBien)  pBien.value  = r.codigo_bien || '';
+      if (pAux)   pAux.value   = r.codigo_aux || '';
+    }
   };
 }
 
@@ -1231,12 +1245,11 @@ function autoSet(id, val) {
   if (el && !el.value.trim()) { el.value = val; el.classList.add('auto'); }
 }
 
-/* ══ Periférico / Componente tipo ══ */
 let periActivo = '';
 const periClases = {CPU:'sel-mon',MONITOR:'sel-mon',MOUSE:'sel-mou',TECLADO:'sel-tec',IMPRESORA:'sel-imp',UPS:'sel-mon',ESCÁNER:'sel-tec'};
 const periIds    = {CPU:'chip-cpu',MONITOR:'chip-monitor',MOUSE:'chip-mouse',TECLADO:'chip-teclado',IMPRESORA:'chip-impresora',UPS:'chip-ups',ESCÁNER:'chip-escaner'};
 const periLabels = {
-  CPU:       '💾 Guardar CPU en Google Sheets',
+  CPU:       '💾 Guardar Fotos y Placas del CPU en Google Sheets',
   MONITOR:   '💾 Guardar Monitor en Google Sheets',
   MOUSE:     '💾 Guardar Mouse en Google Sheets',
   TECLADO:   '💾 Guardar Teclado en Google Sheets',
@@ -1253,6 +1266,26 @@ function selPeri(tipo, chip) {
   const btnSave = document.getElementById('btn-save-peri');
   if (btnSave && periLabels[tipo]) {
     btnSave.innerHTML = periLabels[tipo];
+  }
+
+  // Si se selecciona CPU y ya hay un equipo seleccionado en el combo, autollenar sus datos para complementar fotos/placas
+  if (tipo === 'CPU') {
+    const sel = document.getElementById('p-equipo');
+    if (sel && sel.value !== '' && sel.value !== 'recien_guardado') {
+      const r = sheetData[+sel.value];
+      if (r) {
+        const pMarca = document.getElementById('p-marca');
+        const pMod   = document.getElementById('p-modelo');
+        const pSer   = document.getElementById('p-serie');
+        const pBien  = document.getElementById('p-codigo-bien');
+        const pAux   = document.getElementById('p-codigo-aux');
+        if (pMarca) pMarca.value = r.marca || '';
+        if (pMod)   pMod.value   = r.modelo || '';
+        if (pSer)   pSer.value   = r.serie || '';
+        if (pBien)  pBien.value  = r.codigo_bien || '';
+        if (pAux)   pAux.value   = r.codigo_aux || '';
+      }
+    }
   }
 }
 
@@ -1349,33 +1382,45 @@ async function guardar(mod) {
       fd.append('estado',          g('p-estado') || 'Bueno');
       fd.append('ocr_raw',         document.getElementById('p-ocr-text')?.textContent || '');
 
-      // Vincular con el CPU si se seleccionó uno
-      const selEq = document.getElementById('p-equipo');
-      if (selEq && selEq.value === 'recien_guardado') {
-        const idPrin = selEq.dataset.nuevoId || ('CPU S/N: ' + selEq.dataset.nuevaSerie);
-        if (idPrin) fd.append('id_equipo_principal', idPrin);
-      } else if (eqRec.id_unico) {
-        fd.append('id_equipo_principal', eqRec.id_unico);
-      } else if (eqRec.serie) {
-        fd.append('id_equipo_principal', 'CPU S/N: ' + eqRec.serie);
-      }
+      if (periActivo === 'CPU') {
+        fd.append('tipo', eqRec.tipo || 'COMPUTADOR DE ESCRITORIO');
+        if (eqRec.fila) {
+          fd.append('fila', eqRec.fila);
+        }
+        if (eqRec.id_unico) {
+          fd.append('id_unico', eqRec.id_unico);
+        }
+      } else {
+        fd.append('tipo', periActivo);
 
-      // CRÍTICO: NUNCA enviar eqRec.fila (evita sobreescribir el CPU).
-      // Solo enviar fila si este MISMO periférico ya existía en el Sheet por su propia serie o bien
-      const pBien = (g('p-codigo-bien') || '').trim().toUpperCase();
-      const pSer  = (g('p-serie') || '').trim().toUpperCase();
-      const pAux  = (g('p-codigo-aux') || '').trim().toUpperCase();
-      if (Array.isArray(sheetData) && (pBien || pSer || pAux)) {
-        const matchP = sheetData.find(r => {
-          const rTipo = (r.tipo || '').toUpperCase();
-          const esMismoTipo = rTipo.includes(periActivo) || (!rTipo.includes('CPU') && !rTipo.includes('ESCRITORIO') && !rTipo.includes('PORTAT') && !rTipo.includes('UNO'));
-          return esMismoTipo && (
-            (pBien && (r.codigo_bien||'').trim().toUpperCase() === pBien) ||
-            (pSer  && (r.serie||'').trim().toUpperCase() === pSer && pSer.length > 3) ||
-            (pAux  && (r.codigo_aux||'').trim().toUpperCase() === pAux && pAux.length > 5)
-          );
-        });
-        if (matchP && matchP.fila) fd.append('fila', matchP.fila);
+        // Vincular con el CPU si se seleccionó uno
+        const selEq = document.getElementById('p-equipo');
+        if (selEq && selEq.value === 'recien_guardado') {
+          const idPrin = selEq.dataset.nuevoId || ('CPU S/N: ' + selEq.dataset.nuevaSerie);
+          if (idPrin) fd.append('id_equipo_principal', idPrin);
+        } else if (eqRec.id_unico) {
+          fd.append('id_equipo_principal', eqRec.id_unico);
+        } else if (eqRec.serie) {
+          fd.append('id_equipo_principal', 'CPU S/N: ' + eqRec.serie);
+        }
+
+        // CRÍTICO: NUNCA enviar eqRec.fila para periféricos (evita sobreescribir el CPU).
+        // Solo enviar fila si este MISMO periférico ya existía en el Sheet por su propia serie o bien
+        const pBien = (g('p-codigo-bien') || '').trim().toUpperCase();
+        const pSer  = (g('p-serie') || '').trim().toUpperCase();
+        const pAux  = (g('p-codigo-aux') || '').trim().toUpperCase();
+        if (Array.isArray(sheetData) && (pBien || pSer || pAux)) {
+          const matchP = sheetData.find(r => {
+            const rTipo = (r.tipo || '').toUpperCase();
+            const esMismoTipo = rTipo.includes(periActivo) || (!rTipo.includes('CPU') && !rTipo.includes('ESCRITORIO') && !rTipo.includes('PORTAT') && !rTipo.includes('UNO'));
+            return esMismoTipo && (
+              (pBien && (r.codigo_bien||'').trim().toUpperCase() === pBien) ||
+              (pSer  && (r.serie||'').trim().toUpperCase() === pSer && pSer.length > 3) ||
+              (pAux  && (r.codigo_aux||'').trim().toUpperCase() === pAux && pAux.length > 5)
+            );
+          });
+          if (matchP && matchP.fila) fd.append('fila', matchP.fila);
+        }
       }
 
       const fe = document.getElementById('p-foto-et')?.files?.[0];
