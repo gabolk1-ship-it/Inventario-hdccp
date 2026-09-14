@@ -156,6 +156,12 @@
     tbody td{padding:10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;color:#334155}
     tbody tr:last-child td{border-bottom:none}
     tbody tr:hover td{background:#f8fafc}
+    .group-hdr-row td{background:#e2e8f0 !important;color:#0f172a;font-weight:800;font-size:12.5px;padding:9px 12px;border-top:2px solid #cbd5e1;border-bottom:1px solid #cbd5e1}
+    .row-periferico td{background:#ffffff}
+    .row-periferico td:first-child{font-weight:600;color:#64748b}
+    .stat-badge{background:white;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+    .stat-badge .st-num{font-size:15px;font-weight:800;color:#0284c7}
+    .stat-badge .st-lbl{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px}
     .thumb{width:38px;height:38px;object-fit:cover;border-radius:6px}
     .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;color:white}
     .chip-cpu{background:#0284c7}.chip-monitor{background:#059669}.chip-teclado{background:#d97706}
@@ -655,10 +661,57 @@
 
 <!-- ══════════ INVENTARIO ══════════ -->
 <div id="page-inv" class="page">
-  <div class="inv-hdr">
-    <h2>Inventario Institucional de Activos</h2>
-    <button class="btn-ref" onclick="loadInv()">Actualizar datos</button>
+  <div class="inv-hdr" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
+    <div>
+      <h2 style="font-size:20px;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:8px">
+        <span>📋</span> Inventario Institucional de Activos
+      </h2>
+      <p style="font-size:12px;color:#64748b;margin-top:2px">Organizado y agrupado por Ubicación, Custodio y Estación de Trabajo</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-ref" onclick="reorganizarHoja()" style="background:#0f766e;color:white;border:none;padding:9px 15px;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+        <span>🗂️</span> Reorganizar y Agrupar Hoja
+      </button>
+      <button class="btn-ref" onclick="loadInv()" style="background:#0284c7;color:white;border:none;padding:9px 15px;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+        <span>🔄</span> Actualizar datos
+      </button>
+    </div>
   </div>
+
+  <!-- Resumen de estadísticas -->
+  <div id="inv-stats" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:8px;margin-bottom:14px"></div>
+
+  <!-- Filtros y Búsqueda -->
+  <div class="card" style="padding:14px 16px;margin-bottom:16px;background:#f8fafc;border:1px solid #e2e8f0">
+    <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;margin-bottom:8px;letter-spacing:.5px;display:flex;align-items:center;gap:6px">
+      <span>🔍</span> Filtros y Búsqueda Rápida
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;align-items:center">
+      <div class="field-group">
+        <label for="filtro-ubi">Ubicación / Área:</label>
+        <select id="filtro-ubi" onchange="filtrarInventario()">
+          <option value="">🏢 Todas las ubicaciones</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label for="filtro-custodio">Custodio:</label>
+        <select id="filtro-custodio" onchange="filtrarInventario()">
+          <option value="">👤 Todos los custodios</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label for="filtro-buscar">Buscar por texto:</label>
+        <input id="filtro-buscar" type="text" placeholder="Serie, código, marca, modelo, IP..." oninput="filtrarInventario()">
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px;color:#64748b">
+      <span id="filtro-resultado-txt">Mostrando todos los registros</span>
+      <button type="button" onclick="limpiarFiltros()" style="background:transparent;border:none;color:#0284c7;font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline">
+        ✕ Limpiar filtros
+      </button>
+    </div>
+  </div>
+
   <div class="table-card">
     <div class="tw">
       <table>
@@ -791,6 +844,16 @@ let listaEquipos = [];
 function safeStr(val) {
   if (val === null || val === undefined) return '';
   return String(val).trim();
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 function poblarCustodios(data) {
@@ -1613,64 +1676,238 @@ function limpiarFormulario(mod) {
 /* ══ Inventario ══ */
 async function loadInv() {
   const tb = document.getElementById('inv-tbody');
-  tb.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:28px;color:#aaa">Cargando desde Google Sheets...</td></tr>';
+  if (tb) {
+    tb.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:28px;color:#aaa"><span style="animation:spin 1s linear infinite;display:inline-block">⏳</span> Conectando con Google Sheets...</td></tr>';
+  }
   try {
     const res = await fetch(`${API}/api/inventario?_t=${Date.now()}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!Array.isArray(data)) throw new Error('Respuesta inválida');
     sheetData = data;
-    if (!data.length) {
-      tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:28px;color:#aaa">Sin registros</td></tr>';
-      return;
-    }
-    const chipClass = tipo => {
-      const t = safeStr(tipo).toLowerCase();
-      if(t.includes('cpu')||t.includes('escritorio'))return'chip-escritorio';
-      if(t.includes('monitor'))return'chip-monitor';
-      if(t.includes('teclado'))return'chip-teclado';
-      if(t.includes('mouse'))return'chip-mouse';
-      if(t.includes('impresora'))return'chip-impresora';
-      if(t.includes('portat')||t.includes('laptop'))return'chip-portatil';
-      if(t.includes('uno'))return'chip-aio';
-      return'chip-cpu';
-    };
-    const extractUrl = str => {
-      if (!str) return '';
-      const m = str.match(/https?:\/\/[^\s";)]+/);
-      return m ? m[0] : (str.startsWith('http') ? str : '');
-    };
-    const getFoto = r => {
-      const t = safeStr(r.tipo).toLowerCase();
-      if(t.includes('monitor'))return r.foto_monitor;
-      if(t.includes('teclado'))return r.foto_teclado;
-      if(t.includes('mouse'))return r.foto_mouse;
-      if(t.includes('impresora'))return r.foto_impresora;
-      return r.foto_cpu;
-    };
-    tb.innerHTML = data.map((r,i) => {
-      const op = safeStr(r.operativo).toUpperCase() === 'SI';
-      const rawFoto = getFoto(r);
-      const urlFoto = extractUrl(rawFoto);
-      return `<tr>
-        <td>${i+1}</td>
-        <td><span class="chip ${chipClass(r.tipo)}">${safeStr(r.tipo)||'—'}</span></td>
-        <td style="font-size:11px">${safeStr(r.codigo_bien)||'—'}</td>
-        <td><strong>${safeStr(r.marca)||'—'}</strong></td>
-        <td>${safeStr(r.modelo)||'—'}</td>
-        <td style="font-family:monospace;font-size:11px">${safeStr(r.serie)||'—'}</td>
-        <td style="font-size:11px">${safeStr(r.sistema_op)||'—'}</td>
-        <td>${safeStr(r.ram)||'—'}</td>
-        <td style="font-size:11px">${safeStr(r.responsable)||'—'}</td>
-        <td style="font-size:11px">${safeStr(r.dependencia||r.ubicacion)||'—'}</td>
-        <td><span class="${op?'badge-si':'badge-no'}">${op?'✅ SI':'❌ NO'}</span></td>
-        <td style="font-family:monospace;font-size:11px">${safeStr(r.ip)||'—'}</td>
-        <td>${urlFoto?`<a href="${urlFoto}" target="_blank" style="color:#0284c7;font-weight:600;text-decoration:none">📷 Ver</a>`:'—'}</td>
-      </tr>`;
-    }).join('');
+    
+    // 1. Renderizar tarjetas de estadísticas
+    renderInvStats(sheetData);
+
+    // 2. Poblar opciones dinámicas de filtros
+    populateFilters(sheetData);
+
+    // 3. Renderizar tabla con filtros aplicados
+    filtrarInventario();
   } catch(e) {
-    tb.innerHTML=`<tr><td colspan="13" style="text-align:center;padding:20px;color:#e53">Error: ${e.message}</td></tr>`;
+    if (tb) {
+      tb.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:20px;color:#e53">⚠️ Error al cargar datos: ${e.message}</td></tr>`;
+    }
   }
+}
+
+function renderInvStats(data) {
+  const cont = document.getElementById('inv-stats');
+  if (!cont) return;
+  if (!data || !data.length) {
+    cont.innerHTML = '';
+    return;
+  }
+  let total = data.length;
+  let cpus = 0, mons = 0, tecs = 0, mous = 0, imps = 0, otros = 0;
+  data.forEach(r => {
+    const t = safeStr(r.tipo).toLowerCase();
+    if (t.includes('cpu') || t.includes('escritorio') || t.includes('portat') || t.includes('laptop') || t.includes('uno') || t.includes('servidor')) cpus++;
+    else if (t.includes('monitor') || t.includes('pantalla')) mons++;
+    else if (t.includes('teclado')) tecs++;
+    else if (t.includes('mouse') || t.includes('rat')) mous++;
+    else if (t.includes('impresora') || t.includes('printer')) imps++;
+    else otros++;
+  });
+
+  cont.innerHTML = `
+    <div class="stat-badge"><div class="st-num">${total}</div><div class="st-lbl">Total Bienes</div></div>
+    <div class="stat-badge" style="border-color:#bae6fd"><div class="st-num" style="color:#0284c7">🖥️ ${cpus}</div><div class="st-lbl">Computadores</div></div>
+    <div class="stat-badge" style="border-color:#bbf7d0"><div class="st-num" style="color:#059669">🖥️ ${mons}</div><div class="st-lbl">Monitores</div></div>
+    <div class="stat-badge" style="border-color:#fde68a"><div class="st-num" style="color:#d97706">⌨️ ${tecs}</div><div class="st-lbl">Teclados</div></div>
+    <div class="stat-badge" style="border-color:#ddd6fe"><div class="st-num" style="color:#7c3aed">🖱️ ${mous}</div><div class="st-lbl">Mouses</div></div>
+    <div class="stat-badge" style="border-color:#fecdd3"><div class="st-num" style="color:#e11d48">🖨️ ${imps}</div><div class="st-lbl">Impresoras</div></div>
+  `;
+}
+
+function populateFilters(data) {
+  const selUbi = document.getElementById('filtro-ubi');
+  const selCust = document.getElementById('filtro-custodio');
+  if (!selUbi || !selCust) return;
+
+  const currentUbi = selUbi.value;
+  const currentCust = selCust.value;
+
+  const ubis = new Set();
+  const custs = new Set();
+
+  data.forEach(r => {
+    const u = safeStr(r.ubicacion || r.dependencia).trim();
+    const c = safeStr(r.responsable).trim();
+    if (u) ubis.add(u);
+    if (c) custs.add(c);
+  });
+
+  const ubisArray = Array.from(ubis).sort();
+  const custsArray = Array.from(custs).sort();
+
+  selUbi.innerHTML = '<option value="">🏢 Todas las ubicaciones (' + ubisArray.length + ')</option>' +
+    ubisArray.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
+
+  selCust.innerHTML = '<option value="">👤 Todos los custodios (' + custsArray.length + ')</option>' +
+    custsArray.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+
+  if (currentUbi && ubis.has(currentUbi)) selUbi.value = currentUbi;
+  if (currentCust && custs.has(currentCust)) selCust.value = currentCust;
+}
+
+function filtrarInventario() {
+  const selUbi = document.getElementById('filtro-ubi');
+  const selCust = document.getElementById('filtro-custodio');
+  const inpBusq = document.getElementById('filtro-buscar');
+  const txtRes = document.getElementById('filtro-resultado-txt');
+
+  const ubiVal = (selUbi ? selUbi.value : '').toLowerCase().trim();
+  const custVal = (selCust ? selCust.value : '').toLowerCase().trim();
+  const busqVal = (inpBusq ? inpBusq.value : '').toLowerCase().trim();
+
+  const filtered = sheetData.filter(r => {
+    const rUbi = safeStr(r.ubicacion || r.dependencia).toLowerCase();
+    const rCust = safeStr(r.responsable).toLowerCase();
+    if (ubiVal && !rUbi.includes(ubiVal)) return false;
+    if (custVal && !rCust.includes(custVal)) return false;
+    if (busqVal) {
+      const matchAll = [
+        r.tipo, r.codigo_bien, r.codigo_aux, r.marca, r.modelo,
+        r.serie, r.sistema_op, r.responsable, r.ubicacion, r.ip, r.hostname
+      ].some(v => safeStr(v).toLowerCase().includes(busqVal));
+      if (!matchAll) return false;
+    }
+    return true;
+  });
+
+  if (txtRes) {
+    if (!ubiVal && !custVal && !busqVal) {
+      txtRes.textContent = `Mostrando todos los registros (${filtered.length} bienes)`;
+    } else {
+      txtRes.textContent = `Filtrados: ${filtered.length} de ${sheetData.length} registros`;
+    }
+  }
+
+  renderInvTable(filtered);
+}
+
+function limpiarFiltros() {
+  const selUbi = document.getElementById('filtro-ubi');
+  const selCust = document.getElementById('filtro-custodio');
+  const inpBusq = document.getElementById('filtro-buscar');
+  if (selUbi) selUbi.value = '';
+  if (selCust) selCust.value = '';
+  if (inpBusq) inpBusq.value = '';
+  filtrarInventario();
+}
+
+async function reorganizarHoja() {
+  toast('⏳ Reorganizando y agrupando filas en Google Sheets...', 'ok');
+  try {
+    const res = await fetch(`${API}/api/ordenar-sheet`, { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err);
+    }
+    const d = await res.json();
+    toast(d.message || '✅ Hoja reorganizada con éxito', 'ok');
+    await loadInv();
+  } catch(e) {
+    toast(`❌ Error al reorganizar: ${e.message}`, 'err');
+  }
+}
+
+function renderInvTable(data) {
+  const tb = document.getElementById('inv-tbody');
+  if (!tb) return;
+  if (!data || !data.length) {
+    tb.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:28px;color:#aaa">No se encontraron registros con los filtros seleccionados</td></tr>';
+    return;
+  }
+
+  const chipClass = tipo => {
+    const t = safeStr(tipo).toLowerCase();
+    if (t.includes('escritorio')) return 'chip-escritorio';
+    if (t.includes('portat') || t.includes('laptop')) return 'chip-portatil';
+    if (t.includes('uno') || t.includes('aio')) return 'chip-aio';
+    if (t.includes('cpu')) return 'chip-cpu';
+    if (t.includes('monitor') || t.includes('pantalla')) return 'chip-monitor';
+    if (t.includes('teclado')) return 'chip-teclado';
+    if (t.includes('mouse') || t.includes('rat')) return 'chip-mouse';
+    if (t.includes('impresora')) return 'chip-impresora';
+    return 'chip-cpu';
+  };
+
+  const extractUrl = str => {
+    if (!str) return '';
+    const m = str.match(/https?:\/\/[^\s";)]+/);
+    return m ? m[0] : (str.startsWith('http') ? str : '');
+  };
+
+  const getFoto = r => {
+    const t = safeStr(r.tipo).toLowerCase();
+    if (t.includes('monitor')) return r.foto_monitor;
+    if (t.includes('teclado')) return r.foto_teclado;
+    if (t.includes('mouse')) return r.foto_mouse;
+    if (t.includes('impresora')) return r.foto_impresora;
+    return r.foto_cpu;
+  };
+
+  let lastGroupKey = '';
+  let html = '';
+
+  data.forEach((r, i) => {
+    const ubi = safeStr(r.ubicacion || r.dependencia || 'Sin Ubicación');
+    const cust = safeStr(r.responsable || 'SIN ASIGNAR');
+    const currentGroupKey = `${ubi.toUpperCase()} | ${cust.toUpperCase()}`;
+
+    // Si cambia de estación / ubicación / custodio, insertar barra separadora de grupo
+    if (currentGroupKey !== lastGroupKey) {
+      lastGroupKey = currentGroupKey;
+      html += `
+        <tr class="group-hdr-row">
+          <td colspan="13">
+            <div class="group-hdr-inner" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap">
+              <span>📍 <strong>${escapeHtml(ubi)}</strong> &nbsp;|&nbsp; 👤 <strong>${escapeHtml(cust)}</strong></span>
+              <span style="font-size:10.5px;opacity:.8;font-weight:600">Estación de Trabajo</span>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    const op = safeStr(r.operativo).toUpperCase() === 'SI';
+    const rawFoto = getFoto(r);
+    const urlFoto = extractUrl(rawFoto);
+    const tLower = safeStr(r.tipo).toLowerCase();
+    const esPeriferico = !['cpu', 'escritorio', 'portatil', 'portátil', 'uno', 'aio', 'servidor'].some(k => tLower.includes(k));
+
+    html += `
+      <tr class="${esPeriferico ? 'row-periferico' : ''}">
+        <td style="${esPeriferico ? 'padding-left:18px;color:#64748b' : 'font-weight:700'}">${esPeriferico ? '↳ ' + (i+1) : (i+1)}</td>
+        <td><span class="chip ${chipClass(r.tipo)}">${safeStr(r.tipo) || '—'}</span></td>
+        <td style="font-size:11px">${safeStr(r.codigo_bien) || '—'}</td>
+        <td><strong>${safeStr(r.marca) || '—'}</strong></td>
+        <td>${safeStr(r.modelo) || '—'}</td>
+        <td style="font-family:monospace;font-size:11px">${safeStr(r.serie) || '—'}</td>
+        <td style="font-size:11px">${safeStr(r.sistema_op) || '—'}</td>
+        <td>${safeStr(r.ram) || '—'}</td>
+        <td style="font-size:11px">${safeStr(r.responsable) || '—'}</td>
+        <td style="font-size:11px">${safeStr(r.ubicacion || r.dependencia) || '—'}</td>
+        <td><span class="${op ? 'badge-si' : 'badge-no'}">${op ? '✅ SI' : '❌ NO'}</span></td>
+        <td style="font-family:monospace;font-size:11px">${safeStr(r.ip) || '—'}</td>
+        <td>${urlFoto ? `<a href="${urlFoto}" target="_blank" style="color:#0284c7;font-weight:600;text-decoration:none">📷 Ver</a>` : '—'}</td>
+      </tr>
+    `;
+  });
+
+  tb.innerHTML = html;
 }
 
 /* ══ Toast ══ */

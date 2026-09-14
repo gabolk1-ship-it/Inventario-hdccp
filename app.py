@@ -182,8 +182,48 @@ async def procesar_imagen(archivo: Optional[UploadFile]) -> Optional[str]:
 
 # ─── Helpers Sheets ────────────────────────────────────────────────────────────
 def col_idx(headers: list, name: str) -> Optional[int]:
-    try:    return headers.index(name)
-    except: return None
+    """Búsqueda insensible a acentos, mayúsculas y caracteres especiales para columnas del Sheet."""
+    if not headers or not name:
+        return None
+    try:
+        return headers.index(name)
+    except ValueError:
+        pass
+    import unicodedata, re
+    def _norm_col(t):
+        if not t: return ""
+        nfkd = unicodedata.normalize('NFKD', str(t))
+        ascii_text = ''.join(c for c in nfkd if not unicodedata.combining(c))
+        ascii_text = re.sub(r'[^a-zA-Z0-9_\s/-]', '', ascii_text)
+        return ' '.join(ascii_text.strip().upper().split())
+    target = _norm_col(name)
+    for i, h in enumerate(headers):
+        if _norm_col(h) == target:
+            return i
+    for i, h in enumerate(headers):
+        nh = _norm_col(h)
+        if target in nh or nh in target:
+            return i
+    return None
+
+def tipo_prioridad(tipo_str: str) -> int:
+    """Define la jerarquía de ordenamiento dentro de cada estación de trabajo."""
+    t = (tipo_str or "").upper()
+    if any(k in t for k in ["CPU", "ESCRITORIO", "PORTATIL", "PORTÁTIL", "TODO EN UNO", "AIO", "SERVIDOR", "COMPUTADOR"]):
+        return 1
+    if any(k in t for k in ["MONITOR", "PANTALLA", "DISPLAY"]):
+        return 2
+    if any(k in t for k in ["TECLADO", "KEYBOARD"]):
+        return 3
+    if any(k in t for k in ["MOUSE", "RATON", "RATÓN"]):
+        return 4
+    if any(k in t for k in ["IMPRESORA", "PRINTER", "MATRIZ", "TERMICA"]):
+        return 5
+    if any(k in t for k in ["ESCANER", "ESCÁNER", "SCANNER", "LECTOR"]):
+        return 6
+    if any(k in t for k in ["UPS", "REGULADOR", "NO BREAK"]):
+        return 7
+    return 8
 
 def tipo_prefix(tipo: str) -> str:
     t = (tipo or "").lower()
@@ -227,6 +267,132 @@ FOTO_COLS = {
     "Mouse":     ("Foto General Mouse",     "Foto Etiqueta Mouse",     "OCR Mouse"),
     "Impresora": ("Foto General Impresora", "Foto Etiqueta Impresora", "OCR Impresora"),
 }
+
+def ordenar_hoja_inventario(ws=None) -> list:
+    """
+    Reorganiza y agrupa toda la hoja de cálculo de Google Sheets de manera inteligente:
+    1. Agrupa por Ubicación / Área Funcional (A-Z).
+    2. Agrupa por Nombre del Custodio (custodios asignados primero, sin asignar después).
+    3. Agrupa por Estación de Trabajo / Computador Principal (ID_Equipo_Principal / ID_Unico).
+    4. Dentro de cada estación, ordena estrictamente por componente:
+       CPU/Computador (1) -> Monitor (2) -> Teclado (3) -> Mouse (4) -> Impresora (5) -> Escáner (6) -> UPS (7).
+    5. Actualiza la hoja en un solo lote rápido (batch update).
+    """
+    import gspread.utils
+    import unicodedata
+    import re
+
+    def _norm(s):
+        if not s: return ""
+        nfkd = unicodedata.normalize('NFKD', str(s))
+        ascii_text = ''.join(c for c in nfkd if not unicodedata.combining(c))
+        ascii_text = re.sub(r'[^a-zA-Z0-9_\s/-]', '', ascii_text)
+        return ' '.join(ascii_text.strip().upper().split())
+
+    if ws is None:
+        ws = get_sheet()
+
+    all_vals = ws.get_all_values()
+    if not all_vals or len(all_vals) < 2:
+        return []
+
+    headers = all_vals[0]
+    data_rows = all_vals[1:]
+
+    # Índices clave
+    u_idx = col_idx(headers, "Ubicación / Area Funcional")
+    c_idx = col_idx(headers, "Nombre del Custodio")
+    t_idx = col_idx(headers, "Tipo de bien")
+    b_idx = col_idx(headers, "Código del bien IESS")
+    s_idx = col_idx(headers, "Serie del equipo")
+    id_u_idx = col_idx(headers, "ID_Unico")
+    id_p_idx = col_idx(headers, "ID_Equipo_Principal")
+
+    # 1. Identificar computadores principales por (Ubicación, Custodio)
+    pcs_por_estacion = {}
+    for r in data_rows:
+        u = _norm(r[u_idx]) if u_idx is not None and u_idx < len(r) else ""
+        c = _norm(r[c_idx]) if c_idx is not None and c_idx < len(r) else ""
+        t = r[t_idx] if t_idx is not None and t_idx < len(r) else ""
+        idu = r[id_u_idx].strip() if id_u_idx is not None and id_u_idx < len(r) else ""
+        ser = r[s_idx].strip() if s_idx is not None and s_idx < len(r) else ""
+        cod = r[b_idx].strip() if b_idx is not None and b_idx < len(r) else ""
+
+        if tipo_prioridad(t) == 1:
+            key = (u, c)
+            if key not in pcs_por_estacion:
+                pcs_por_estacion[key] = []
+            pc_id = idu or f"PC_{ser or cod}"
+            pcs_por_estacion[key].append(pc_id)
+
+    # 2. Asignar clave de ordenamiento y vincular periféricos huérfanos
+    filas_ordenadas = []
+    for r in data_rows:
+        # Asegurar longitud completa de la fila
+        r_padded = list(r) + [""] * max(0, len(headers) - len(r))
+        
+        # Limpieza de texto en ubicación (ej: corregir caracteres extraños como REHABITACIN)
+        if u_idx is not None and u_idx < len(r_padded):
+            u_raw = r_padded[u_idx].strip()
+            if "REHABITAC" in _norm(u_raw):
+                r_padded[u_idx] = "REHABILITACIÓN"
+            else:
+                r_padded[u_idx] = ' '.join(u_raw.split())
+
+        if c_idx is not None and c_idx < len(r_padded):
+            r_padded[c_idx] = ' '.join(r_padded[c_idx].strip().split())
+
+        u = _norm(r_padded[u_idx]) if u_idx is not None else ""
+        c = _norm(r_padded[c_idx]) if c_idx is not None else ""
+        t = r_padded[t_idx] if t_idx is not None else ""
+        prio = tipo_prioridad(t)
+        idu = r_padded[id_u_idx].strip() if id_u_idx is not None else ""
+        idp = r_padded[id_p_idx].strip() if id_p_idx is not None else ""
+        ser = r_padded[s_idx].strip() if s_idx is not None else ""
+        cod = r_padded[b_idx].strip() if b_idx is not None else ""
+
+        # Determinar grupo de la estación de trabajo
+        if prio == 1:
+            grp_id = idu or f"PC_{ser or cod}"
+        elif idp:
+            grp_id = idp
+        else:
+            # Si el periférico no tiene ID_Equipo_Principal pero hay exactamente 1 PC en esa ubicación/custodio, vincularlo
+            pcs = pcs_por_estacion.get((u, c), [])
+            if len(pcs) == 1:
+                grp_id = pcs[0]
+                if id_p_idx is not None and not r_padded[id_p_idx]:
+                    r_padded[id_p_idx] = grp_id
+            else:
+                grp_id = "STANDALONE"
+
+        # Criterios de ordenamiento:
+        # 1. Ubicación (vacías al final)
+        u_sort = "ZZZZ" if not u else u
+        # 2. Custodio (con nombre primero, sin asignar después, vacíos al final)
+        if not c:
+            c_sort = "ZZZZ"
+        elif "SIN ASIGNAR" in c:
+            c_sort = "YY_SIN_ASIGNAR"
+        else:
+            c_sort = f"00_{c}"
+        # 3. ID de la estación de trabajo
+        # 4. Prioridad de tipo de bien (CPU=1, Monitor=2, Teclado=3, Mouse=4, Impresora=5, etc.)
+        # 5. Código de bien o serie
+        sort_key = (u_sort, c_sort, grp_id, prio, cod or ser)
+        filas_ordenadas.append((sort_key, r_padded))
+
+    filas_ordenadas.sort(key=lambda x: x[0])
+    resultado_final = [item[1] for item in filas_ordenadas]
+
+    # 3. Escribir de vuelta a Google Sheets en una sola llamada eficiente
+    if resultado_final:
+        num_filas = len(resultado_final)
+        col_end = gspread.utils.rowcol_to_a1(1, len(headers)).rstrip("0123456789")
+        rango = f"A2:{col_end}{num_filas + 1}"
+        ws.update(resultado_final, rango, value_input_option="USER_ENTERED")
+
+    return resultado_final
 
 def escribir_sheets(data: dict) -> tuple[int, bool]:
     import gspread.utils
@@ -425,6 +591,22 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
 
         col_end = gspread.utils.rowcol_to_a1(1, len(fila)).rstrip("0123456789")
         ws.update([fila], f"A{fila_num}:{col_end}{fila_num}", value_input_option="USER_ENTERED")
+
+        # Auto-ordenar y agrupar la hoja permanentemente tras actualizar
+        try:
+            filas_ord = ordenar_hoja_inventario(ws)
+            ser_busq = (data.get("serie") or "").strip()
+            cod_busq = (data.get("codigo_bien") or "").strip()
+            s_i = col_idx(headers, "Serie del equipo")
+            b_i = col_idx(headers, "Código del bien IESS")
+            for idx_f, r in enumerate(filas_ord, start=2):
+                if ser_busq and s_i is not None and s_i < len(r) and r[s_i].strip() == ser_busq:
+                    return idx_f, True
+                if cod_busq and b_i is not None and b_i < len(r) and r[b_i].strip() == cod_busq:
+                    return idx_f, True
+        except Exception as ex_o:
+            print(f"Aviso al auto-ordenar tras actualizar: {ex_o}")
+
         return fila_num, True
 
     # Si NO existe, es registro nuevo: append_row (CADA BIEN TIENE SU PROPIA FILA)
@@ -488,6 +670,25 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
 
     ws.append_row(fila, value_input_option="USER_ENTERED")
     nueva_fila = len(todas_filas) + 1
+
+    # Auto-ordenar y agrupar la hoja permanentemente tras nuevo registro
+    try:
+        filas_ord = ordenar_hoja_inventario(ws)
+        ser_busq = (data.get("serie") or "").strip()
+        cod_busq = (data.get("codigo_bien") or "").strip()
+        u_i = col_idx(headers, "ID_Unico")
+        s_i = col_idx(headers, "Serie del equipo")
+        b_i = col_idx(headers, "Código del bien IESS")
+        for idx_f, r in enumerate(filas_ord, start=2):
+            if id_unico and u_i is not None and u_i < len(r) and id_unico[:8] in r[u_i]:
+                return idx_f, False
+            if ser_busq and s_i is not None and s_i < len(r) and r[s_i].strip() == ser_busq:
+                return idx_f, False
+            if cod_busq and b_i is not None and b_i < len(r) and r[b_i].strip() == cod_busq:
+                return idx_f, False
+    except Exception as ex_o:
+        print(f"Aviso al auto-ordenar tras nuevo registro: {ex_o}")
+
     return nueva_fila, False
 
 
@@ -901,6 +1102,20 @@ def listar():
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error leyendo Sheets: {e}")
+
+
+@app.post("/api/ordenar-sheet", summary="Reorganizar y agrupar la hoja de cálculo")
+def api_ordenar_sheet():
+    try:
+        ws = get_sheet()
+        filas = ordenar_hoja_inventario(ws)
+        return {
+            "ok": True,
+            "total_filas": len(filas),
+            "message": f"✅ Hoja de cálculo reorganizada y agrupada con éxito ({len(filas)} filas ordenadas por ubicación, custodio y estación)"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reorganizando Google Sheets: {e}")
 
 
 @app.delete("/api/inventario/{id_unico}")
