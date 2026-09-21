@@ -292,7 +292,7 @@ def ordenar_hoja_inventario(ws=None) -> list:
     if ws is None:
         ws = get_sheet()
 
-    all_vals = ws.get_all_values()
+    all_vals = ws.get_all_values(value_render_option="FORMULA")
     if not all_vals or len(all_vals) < 2:
         return []
 
@@ -694,7 +694,7 @@ def escribir_sheets(data: dict) -> tuple[int, bool]:
 
 def leer_sheets() -> list:
     ws       = get_sheet()
-    all_vals = ws.get_all_values()
+    all_vals = ws.get_all_values(value_render_option="FORMULA")
     if not all_vals or len(all_vals) < 2:
         return []
     headers = all_vals[0]
@@ -703,7 +703,14 @@ def leer_sheets() -> list:
         idx = col_idx(headers, col_name)
         if idx is not None and idx < len(row):
             v = row[idx]
-            return str(v).strip() if v is not None else ""
+            if v is not None:
+                s = str(v).strip()
+                if s.startswith("="):
+                    import re
+                    m = re.search(r'https?://[^\s";)]+', s)
+                    if m:
+                        return m.group(0)
+                return s
         return ""
 
     result = []
